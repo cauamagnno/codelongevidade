@@ -1,0 +1,800 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CRM Pipeline — MLE</title>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <script src="https://code.iconify.design/iconify-icon/1.0.7/iconify-icon.min.js"></script>
+    <!-- Supabase SDK -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        :root {
+            --bg-primary: #F4F4EE;
+            --bg-secondary: #E6E6DA;
+            --accent-primary: #1D3E2F;
+            --accent-gold: #C5A059;
+            --text-primary: #111111;
+            --text-secondary: #555555;
+            --border: rgba(29, 62, 47, 0.15);
+            --font-display: 'Space Grotesk', sans-serif;
+            --font-body: 'Inter', sans-serif;
+        }
+
+        body { margin: 0; font-family: var(--font-body); background: var(--bg-primary); color: var(--text-primary); display: flex; height: 100vh; overflow: hidden; }
+        
+        /* Sidebar */
+        .sidebar { width: 260px; background: white; border-right: 1px solid var(--border); display: flex; flex-direction: column; z-index: 10; }
+        .sidebar-header { height: 70px; display: flex; align-items: center; padding: 0 24px; border-bottom: 1px solid var(--border); font-family: var(--font-display); font-weight: 700; font-size: 18px; color: var(--accent-primary); }
+        .sidebar-menu { list-style: none; padding: 24px 16px; margin: 0; flex: 1; }
+        .sidebar-menu li { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-radius: 8px; cursor: pointer; color: var(--text-secondary); font-weight: 500; transition: all 0.2s; margin-bottom: 8px;}
+        .sidebar-menu li:hover { background: rgba(29, 62, 47, 0.05); color: var(--accent-primary); }
+        .sidebar-menu li.active { background: var(--accent-primary); color: white; }
+        
+        /* Main Layout */
+        .main-content { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+        
+        /* Topnav */
+        .topnav { height: 70px; background: white; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; padding: 0 32px; flex-shrink: 0; }
+        .topnav-controls { display: flex; gap: 16px; align-items: center; }
+        .input-field { height: 40px; border-radius: 8px; border: 1px solid var(--border); padding: 0 16px; font-family: var(--font-body); outline: none; transition: border 0.2s; width: 100%;}
+        .input-field:focus { border-color: var(--accent-primary); }
+        .btn { height: 40px; padding: 0 20px; border-radius: 8px; font-weight: 600; cursor: pointer; border: none; font-family: var(--font-body); transition: all 0.2s; display: inline-flex; align-items: center; gap: 8px; }
+        .btn-gold { background: var(--accent-gold); color: white; }
+        .btn-gold:hover { background: #b08c47; }
+        .btn-outline { background: transparent; border: 1px solid var(--border); color: var(--text-primary); }
+        .btn-outline:hover { background: rgba(0,0,0,0.05); }
+
+        /* Views */
+        .view-section { display: none; flex: 1; overflow-y: auto; }
+        .view-section.active { display: flex; flex-direction: column; }
+
+        /* Kanban Board */
+        .kanban-board { flex: 1; display: flex; gap: 24px; padding: 32px; overflow-x: auto; align-items: flex-start; }
+        .kanban-col { width: 320px; min-width: 320px; background: rgba(255, 255, 255, 0.6); border: 1px solid var(--border); border-radius: 12px; display: flex; flex-direction: column; max-height: 100%; }
+        .kanban-col-header { padding: 16px 20px; border-bottom: 1px solid var(--border); background: white; border-radius: 12px 12px 0 0; }
+        .kanban-col-title { font-weight: 600; font-family: var(--font-display); display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;}
+        .kanban-col-desc { font-size: 11px; color: var(--text-secondary); line-height: 1.3;}
+        .col-count { background: var(--bg-secondary); padding: 2px 10px; border-radius: 100px; font-size: 13px; color: var(--text-secondary); }
+        .kanban-cards { padding: 16px; overflow-y: auto; flex: 1; min-height: 150px; display: flex; flex-direction: column; gap: 12px; }
+        
+        /* Cards */
+        .kanban-card { background: white; border: 1px solid var(--border); border-radius: 8px; padding: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); cursor: grab; transition: transform 0.2s, box-shadow 0.2s; }
+        .kanban-card:hover { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(0,0,0,0.08); }
+        .kanban-card:active { cursor: grabbing; }
+        .kanban-card.dragging { opacity: 0.5; }
+        .card-name { font-weight: 600; font-size: 15px; margin-bottom: 4px; }
+        .card-meta { font-size: 12px; color: var(--text-secondary); margin-bottom: 12px; display: flex; justify-content: space-between; }
+        
+        /* Tags */
+        .tag-container { display: flex; flex-wrap: wrap; gap: 6px; }
+        .tag { padding: 4px 10px; border-radius: 4px; font-size: 11px; font-weight: 600; display: inline-block; text-transform: uppercase; letter-spacing: 0.5px; }
+        .tag-high { background: rgba(232, 64, 64, 0.1); color: #E84040; } /* Alto Potencial */
+        .tag-medium { background: rgba(245, 166, 35, 0.1); color: #F5A623; } /* Médio Potencial */
+        .tag-low { background: rgba(39, 174, 96, 0.1); color: #27AE60; } /* Baixo Potencial */
+        .tag-custom { background: rgba(29, 62, 47, 0.1); color: var(--accent-primary); }
+
+        /* Side Panel */
+        .side-panel {
+            position: fixed; top: 0; right: -600px; width: 500px; height: 100vh;
+            background: white; border-left: 1px solid var(--border);
+            box-shadow: -10px 0 30px rgba(0,0,0,0.05);
+            transition: right 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 100; display: flex; flex-direction: column;
+        }
+        .side-panel.open { right: 0; }
+        .sp-header { padding: 24px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+        .sp-body { padding: 24px; overflow-y: auto; flex: 1; }
+        .sp-close { cursor: pointer; font-size: 20px; font-weight: bold; background: none; border: none; color: var(--text-secondary); }
+        .sp-section { margin-bottom: 32px; }
+        .sp-title { font-size: 13px; text-transform: uppercase; color: var(--text-secondary); margin-bottom: 12px; font-weight: 600; letter-spacing: 1px; }
+        .sp-box { background: var(--bg-primary); padding: 16px; border-radius: 8px; font-size: 14px; line-height: 1.5; border: 1px solid var(--border); margin-bottom: 8px;}
+        
+        .file-upload-wrapper { border: 2px dashed var(--border); border-radius: 8px; padding: 24px; text-align: center; margin-top: 8px; transition: border 0.2s; background: #fafafa;}
+        .file-upload-wrapper:hover { border-color: var(--accent-gold); }
+        .sales-copy { white-space: pre-wrap; font-family: monospace; font-size: 12px; background: #111; color: #0f0; padding: 16px; border-radius: 8px; overflow-x: auto;}
+
+        /* Contacts Table */
+        .admin-table { width: 100%; border-collapse: collapse; background: white; border-radius: 12px; overflow: hidden; border: 1px solid var(--border); box-shadow: 0 4px 12px rgba(0,0,0,0.02); }
+        .admin-table th { background: #f8f9fa; padding: 16px; text-align: left; font-size: 13px; font-weight: 600; color: var(--text-secondary); border-bottom: 1px solid var(--border); }
+        .admin-table td { padding: 16px; border-bottom: 1px solid var(--border); font-size: 14px; color: var(--text-primary); }
+        .admin-table tr:hover { background: rgba(29, 62, 47, 0.02); }
+        
+        /* Settings Cards */
+        .settings-card { background: white; border: 1px solid var(--border); border-radius: 12px; padding: 24px; max-width: 600px; margin-bottom: 24px;}
+        .settings-card h3 { margin-top: 0; font-family: var(--font-display); color: var(--accent-primary); }
+    </style>
+</head>
+<body>
+
+    <div class="sidebar">
+        <div class="sidebar-header">CRM Longevidade</div>
+        <ul class="sidebar-menu">
+            <li id="nav-pipeline" class="active" onclick="window.switchView('pipeline')"><iconify-icon icon="solar:kanban-bold-duotone" style="font-size: 20px;"></iconify-icon> Pipeline</li>
+            <li id="nav-contacts" onclick="window.switchView('contacts')"><iconify-icon icon="solar:users-group-two-rounded-bold-duotone" style="font-size: 20px;"></iconify-icon> Contatos</li>
+            <li id="nav-settings" onclick="window.switchView('settings')"><iconify-icon icon="solar:settings-bold-duotone" style="font-size: 20px;"></iconify-icon> Configurações</li>
+        </ul>
+    </div>
+
+    <div class="main-content">
+        <div class="topnav">
+            <div>
+                <h2 id="top-title" style="margin:0; font-size: 20px; font-family: var(--font-display);">Pipeline Comercial</h2>
+            </div>
+            <!-- Empty space since controls moved -->
+        </div>
+
+        <!-- 1. VIEW: PIPELINE -->
+        <div id="view-pipeline" class="view-section active">
+            <div class="kanban-board">
+                <div class="kanban-col" data-status="new">
+                    <div class="kanban-col-header">
+                        <div class="kanban-col-title">Preencheu <span class="col-count">0</span></div>
+                        <div class="kanban-col-desc">Lead que finalizou o diagnóstico.</div>
+                    </div>
+                    <div class="kanban-cards" ondragover="allowDrop(event)" ondrop="drop(event, 'new')"></div>
+                </div>
+                <div class="kanban-col" data-status="contacted">
+                    <div class="kanban-col-header">
+                        <div class="kanban-col-title">Em Contato <span class="col-count">0</span></div>
+                        <div class="kanban-col-desc">Lead já abordado pelo time.</div>
+                    </div>
+                    <div class="kanban-cards" ondragover="allowDrop(event)" ondrop="drop(event, 'contacted')"></div>
+                </div>
+                <div class="kanban-col" data-status="scheduled">
+                    <div class="kanban-col-header">
+                        <div class="kanban-col-title">SAL (Aceito) <span class="col-count">0</span></div>
+                        <div class="kanban-col-desc">Aceito pelo time de vendas.</div>
+                    </div>
+                    <div class="kanban-cards" ondragover="allowDrop(event)" ondrop="drop(event, 'scheduled')"></div>
+                </div>
+                <div class="kanban-col" data-status="converted">
+                    <div class="kanban-col-header">
+                        <div class="kanban-col-title">Cliente <span class="col-count">0</span></div>
+                        <div class="kanban-col-desc">Já comprou o produto.</div>
+                    </div>
+                    <div class="kanban-cards" ondragover="allowDrop(event)" ondrop="drop(event, 'converted')"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 2. VIEW: CONTATOS -->
+        <div id="view-contacts" class="view-section" style="padding: 32px;">
+            <div style="display: flex; gap: 16px; margin-bottom: 24px; max-width: 800px;">
+                <input type="text" id="contact-search" class="input-field" placeholder="Pesquisar por nome, número ou e-mail corporativo..." oninput="window.renderContactsTable()" style="flex: 1;">
+                <button class="btn btn-gold" onclick="window.exportCSV()"><iconify-icon icon="solar:download-bold-duotone"></iconify-icon> Exportar CSV</button>
+            </div>
+            <table class="admin-table">
+                <thead>
+                    <tr>
+                        <th>Nome do Lead</th>
+                        <th>WhatsApp</th>
+                        <th>E-mail Corporativo</th>
+                        <th>Score</th>
+                        <th>Potencial</th>
+                        <th>Ações</th>
+                    </tr>
+                </thead>
+                <tbody id="contacts-table-body">
+                    <!-- Loaded via JS -->
+                </tbody>
+            </table>
+        </div>
+
+        <!-- 3. VIEW: CONFIGURAÇÕES -->
+        <div id="view-settings" class="view-section" style="padding: 32px;">
+            
+            <div class="settings-card">
+                <h3>WhatsApp (API Evolution)</h3>
+                <p style="font-size: 14px; color: var(--text-secondary); margin-bottom: 24px;">
+                    Conecte o seu número de WhatsApp lendo o QR Code abaixo. Após conectado, o sistema enviará PDFs automaticamente e você poderá chamar os clientes direto pelo CRM.
+                </p>
+                <div style="display: flex; flex-direction: column; gap: 12px; margin-bottom: 16px;">
+                    <input type="text" id="evo-url" class="input-field" placeholder="URL da Evolution (ex: https://api.seusite.com)" value="https://stenio-evolution.vfgbmr.easypanel.host">
+                    <input type="password" id="evo-key" class="input-field" placeholder="Global API Key" value="Steni0-o312">
+                    <input type="text" id="evo-instance" class="input-field" placeholder="Nome da Instância (ex: crm_oficial)" value="crm_longevidade">
+                </div>
+                <div style="display: flex; gap: 12px; align-items: center;">
+                    <button class="btn btn-gold" onclick="window.connectEvolution()">
+                        <iconify-icon icon="solar:qr-code-bold-duotone" style="font-size: 20px;"></iconify-icon> Gerar QR Code
+                    </button>
+                    <div id="evo-status" style="font-size: 12px; font-weight: 600;"></div>
+                </div>
+                <div id="evo-qrcode-container" style="margin-top: 24px; text-align: center; display: none;">
+                    <img id="evo-qrcode-img" src="" alt="QR Code WhatsApp" style="max-width: 250px; border-radius: 12px; border: 1px solid var(--border);">
+                    <p style="font-size: 12px; color: var(--text-secondary); margin-top: 8px;">Abra o WhatsApp no celular e leia o código acima para conectar.</p>
+                </div>
+            </div>
+
+            <div class="settings-card">
+                <h3>Gerenciador de Tags</h3>
+                <p style="font-size: 14px; color: var(--text-secondary); margin-bottom: 24px;">
+                    Crie novas tags personalizadas para organizar seus leads. As tags padrão do sistema são fixas e usadas na automação inicial.
+                </p>
+                
+                <div id="settings-tag-list" style="display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 24px;">
+                    <!-- Tags render here -->
+                </div>
+
+                <div style="display: flex; gap: 12px; align-items: center;">
+                    <input type="text" id="new-tag-input" class="input-field" placeholder="Nome da nova tag..." style="flex: 1;">
+                    <button class="btn btn-gold" onclick="window.createCustomTag()">Criar Tag</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SIDE PANEL FOR LEAD DETAILS -->
+    <div class="side-panel" id="side-panel">
+        <div class="sp-header">
+            <h3 id="sp-name" style="margin:0; font-family: var(--font-display);">Nome do Lead</h3>
+            <button class="sp-close" onclick="window.closePanel()">✕</button>
+        </div>
+        <div class="sp-body" id="sp-content">
+            <!-- Populated via JS -->
+        </div>
+    </div>
+
+    <script>
+        const SUPABASE_URL = "https://xxrgxklwahmanxlgioxk.supabase.co";
+        const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh4cmd4a2x3YWhtYW54bGdpb3hrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYzMTE2OTEsImV4cCI6MjA5MTg4NzY5MX0.unV6eUzgQjrrP2oZRllSiSGb7wsxoSJVdG94G6iZUFw";
+        const dbClient = window.supabase ? window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY) : null;
+        
+        window.allLeads = [];
+        window.currentLeadId = null;
+        
+        // Custom Tags State
+        window.customTags = [];
+        try {
+            const stored = localStorage.getItem("crm_custom_tags");
+            if (stored) window.customTags = JSON.parse(stored);
+        } catch (e) {
+            console.error("Error parsing tags", e);
+        }
+
+        // Evolution Config State
+        window.evoConfig = { url: '', key: '', instance: '' };
+        try {
+            const storedEvo = localStorage.getItem("crm_evo_config");
+            if (storedEvo) window.evoConfig = JSON.parse(storedEvo);
+        } catch(e) {}
+
+        window.loadLeads = async function() {
+            if(!dbClient) return;
+            const { data, error } = await dbClient.from('leads').select('*').order('created_at', { ascending: false });
+            if (error) console.error("Error loading leads:", error);
+            
+            window.allLeads = data || [];
+            window.renderKanban(window.allLeads);
+            window.renderContactsTable();
+            window.renderSettingsTags();
+
+            // Populate Evolution fields
+            if(window.evoConfig.url) document.getElementById('evo-url').value = window.evoConfig.url;
+            if(window.evoConfig.key) document.getElementById('evo-key').value = window.evoConfig.key;
+            if(window.evoConfig.instance) document.getElementById('evo-instance').value = window.evoConfig.instance;
+        };
+
+        // --- View Switching ---
+        window.switchView = function(viewName) {
+            try {
+                document.querySelectorAll('.view-section').forEach(el => el.style.display = 'none');
+                document.querySelectorAll('.view-section').forEach(el => el.classList.remove('active'));
+                document.querySelectorAll('.sidebar-menu li').forEach(el => el.classList.remove('active'));
+                
+                const viewEl = document.getElementById('view-' + viewName);
+                const navEl = document.getElementById('nav-' + viewName);
+                
+                if(viewEl) {
+                    viewEl.classList.add('active');
+                    viewEl.style.display = 'flex';
+                }
+                if(navEl) navEl.classList.add('active');
+                
+                const titles = {
+                    'pipeline': 'Pipeline Comercial',
+                    'contacts': 'Todos os Contatos',
+                    'settings': 'Configurações'
+                };
+                const titleEl = document.getElementById('top-title');
+                if(titleEl) titleEl.innerText = titles[viewName] || '';
+            } catch(e) {
+                console.error("Error switching view", e);
+            }
+        };
+
+        // --- Kanban Logic ---
+        window.renderKanban = function(leads) {
+            document.querySelectorAll('.kanban-cards').forEach(el => el.innerHTML = '');
+            let counts = { new: 0, contacted: 0, scheduled: 0, converted: 0 };
+
+            leads.forEach(l => {
+                let status = l.admin_status || 'new';
+                // Ignore dropped columns
+                if(status === 'not_interested') return;
+                if(!counts.hasOwnProperty(status)) status = 'new';
+                
+                counts[status]++;
+                
+                let tagClass = l.risk_level === "high" ? "tag-high" : (l.risk_level === "medium" ? "tag-medium" : "tag-low");
+                let tagLabel = l.risk_level === "high" ? "Alto Potencial" : (l.risk_level === "medium" ? "Médio Potencial" : "Baixo Potencial");
+                let dt = new Date(l.created_at).toLocaleDateString('pt-BR');
+                
+                // Add custom tags to visual
+                let customTagsHtml = "";
+                if(l.custom_tags && Array.isArray(l.custom_tags)) {
+                    l.custom_tags.forEach(ct => {
+                        customTagsHtml += `<span class="tag tag-custom">${ct}</span>`;
+                    });
+                }
+                
+                const card = document.createElement("div");
+                card.className = "kanban-card";
+                card.draggable = true;
+                card.id = `card-${l.id}`;
+                card.ondragstart = (e) => window.dragStart(e, l.id);
+                card.ondragend = window.dragEnd;
+                card.onclick = () => window.openPanel(l.id);
+                
+                card.innerHTML = `
+                    <div class="card-name">${l.name}</div>
+                    <div class="card-meta"><span>${dt}</span> <span>Score: ${l.score_total || 0}</span></div>
+                    <div class="tag-container">
+                        <span class="tag ${tagClass}">${tagLabel}</span>
+                        ${customTagsHtml}
+                    </div>
+                `;
+                
+                const col = document.querySelector(`.kanban-col[data-status="${status}"] .kanban-cards`);
+                if(col) col.appendChild(card);
+            });
+
+            Object.keys(counts).forEach(k => {
+                const badge = document.querySelector(`.kanban-col[data-status="${k}"] .col-count`);
+                if(badge) badge.innerText = counts[k];
+            });
+        };
+
+        window.filterCards = function() {
+            const searchEl = document.getElementById("search-input");
+            const q = searchEl ? searchEl.value.toLowerCase() : "";
+            const filtered = window.allLeads.filter(l => 
+                (l.name && l.name.toLowerCase().includes(q)) || 
+                (l.email && l.email.toLowerCase().includes(q)) ||
+                (l.whatsapp && l.whatsapp.includes(q))
+            );
+            window.renderKanban(filtered);
+        };
+
+        // --- Drag & Drop ---
+        window.draggedCardId = null;
+        window.dragStart = function(e, id) { window.draggedCardId = id; setTimeout(() => e.target.classList.add('dragging'), 0); };
+        window.dragEnd = function(e) { e.target.classList.remove('dragging'); };
+        window.allowDrop = function(e) { e.preventDefault(); };
+        window.drop = async function(e, newStatus) {
+            e.preventDefault();
+            if(!window.draggedCardId) return;
+            const leadIndex = window.allLeads.findIndex(l => l.id === window.draggedCardId);
+            if(leadIndex > -1 && window.allLeads[leadIndex].admin_status !== newStatus) {
+                window.allLeads[leadIndex].admin_status = newStatus;
+                window.renderKanban(window.allLeads);
+                await dbClient.from('leads').update({ admin_status: newStatus }).eq('id', window.draggedCardId);
+            }
+        };
+
+        // --- Contacts Table Logic ---
+        window.renderContactsTable = function() {
+            const searchEl = document.getElementById("contact-search");
+            const q = searchEl ? searchEl.value.toLowerCase() : "";
+            const filtered = window.allLeads.filter(l => 
+                (l.name && l.name.toLowerCase().includes(q)) || 
+                (l.email && l.email.toLowerCase().includes(q)) ||
+                (l.whatsapp && l.whatsapp.includes(q))
+            ).sort((a, b) => (a.name || "").localeCompare(b.name || ""));
+            
+            const tbody = document.getElementById("contacts-table-body");
+            if(!tbody) return;
+            tbody.innerHTML = "";
+            
+            filtered.forEach(l => {
+                let tagLabel = l.risk_level === "high" ? "Alto Potencial" : (l.risk_level === "medium" ? "Médio Potencial" : "Baixo Potencial");
+                let statusLabel = { 'new': 'Preencheu', 'contacted': 'Em Contato', 'scheduled': 'SAL', 'converted': 'Cliente' }[l.admin_status || 'new'] || 'Preencheu';
+                
+                const tr = document.createElement("tr");
+                tr.innerHTML = `
+                    <td style="font-weight: 600;">${l.name}</td>
+                    <td>${l.whatsapp}</td>
+                    <td>${l.email}</td>
+                    <td>${l.score_total || 0}</td>
+                    <td>${tagLabel}</td>
+                    <td>
+                        <button class="btn btn-outline" style="height: 32px; font-size: 12px; padding: 0 12px;" onclick="window.openPanel('${l.id}')">Ver Ficha</button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        };
+
+        // --- Settings Tags Logic ---
+        window.renderSettingsTags = function() {
+            const container = document.getElementById("settings-tag-list");
+            if(!container) return;
+            container.innerHTML = `
+                <span class="tag tag-high" title="Tag fixa do sistema"><iconify-icon icon="solar:lock-bold"></iconify-icon> Alto Potencial</span>
+                <span class="tag tag-medium" title="Tag fixa do sistema"><iconify-icon icon="solar:lock-bold"></iconify-icon> Médio Potencial</span>
+                <span class="tag tag-low" title="Tag fixa do sistema"><iconify-icon icon="solar:lock-bold"></iconify-icon> Baixo Potencial</span>
+            `;
+            window.customTags.forEach((t, i) => {
+                container.innerHTML += `<span class="tag tag-custom">${t} <iconify-icon icon="solar:close-circle-bold" style="cursor:pointer; margin-left:4px;" onclick="window.deleteCustomTag(${i})"></iconify-icon></span>`;
+            });
+        };
+        window.createCustomTag = function() {
+            const val = document.getElementById("new-tag-input").value.trim();
+            if(val && !window.customTags.includes(val)) {
+                window.customTags.push(val);
+                localStorage.setItem("crm_custom_tags", JSON.stringify(window.customTags));
+                document.getElementById("new-tag-input").value = "";
+                window.renderSettingsTags();
+            }
+        };
+        window.deleteCustomTag = function(index) {
+            window.customTags.splice(index, 1);
+            localStorage.setItem("crm_custom_tags", JSON.stringify(window.customTags));
+            window.renderSettingsTags();
+        };
+
+        // --- Apply Tag to Lead ---
+        window.assignTagToLead = async function(tag) {
+            if(!window.currentLeadId) return;
+            const lead = window.allLeads.find(l => l.id === window.currentLeadId);
+            if(!lead) return;
+            
+            let tags = lead.custom_tags || [];
+            if(!tags.includes(tag)) {
+                tags.push(tag);
+                lead.custom_tags = tags;
+                await dbClient.from('leads').update({ custom_tags: tags }).eq('id', window.currentLeadId);
+                window.openPanel(window.currentLeadId);
+                window.renderKanban(window.allLeads);
+            }
+        };
+
+        window.removeTagFromLead = async function(tag) {
+            if(!window.currentLeadId) return;
+            const lead = window.allLeads.find(l => l.id === window.currentLeadId);
+            if(!lead) return;
+            
+            let tags = lead.custom_tags || [];
+            tags = tags.filter(t => t !== tag);
+            lead.custom_tags = tags;
+            await dbClient.from('leads').update({ custom_tags: tags }).eq('id', window.currentLeadId);
+            window.openPanel(window.currentLeadId);
+            window.renderKanban(window.allLeads);
+        };
+
+        // --- Side Panel ---
+        window.openPanel = function(id) {
+            const lead = window.allLeads.find(l => l.id === id);
+            if(!lead) return;
+            window.currentLeadId = id;
+            
+            document.getElementById("sp-name").innerText = lead.name;
+            let tagClass = lead.risk_level === "high" ? "tag-high" : (lead.risk_level === "medium" ? "tag-medium" : "tag-low");
+            let tagLabel = lead.risk_level === "high" ? "Alto Potencial" : (lead.risk_level === "medium" ? "Médio Potencial" : "Baixo Potencial");
+
+            let pdfHtml = "";
+            if(lead.pdf_url) {
+                pdfHtml = `
+                    <div class="sp-box" style="display:flex; justify-content:space-between; align-items:center; border-color:var(--accent-gold);">
+                        <div style="display:flex; align-items:center; gap:8px;">
+                            <iconify-icon icon="solar:document-bold-duotone" style="color:var(--accent-gold); font-size:24px;"></iconify-icon>
+                            <span style="font-weight:600;">Dossiê Anexado</span>
+                        </div>
+                        <a href="${lead.pdf_url}" target="_blank" class="btn btn-gold" style="height:32px; font-size:12px; text-decoration:none;">Visualizar PDF</a>
+                    </div>
+                `;
+            } else {
+                pdfHtml = `
+                    <div class="file-upload-wrapper">
+                        <iconify-icon icon="solar:upload-minimalistic-bold-duotone" style="font-size:32px; color:var(--text-secondary); margin-bottom:8px;"></iconify-icon>
+                        <div style="font-size:13px; margin-bottom:12px;">Anexar Dossiê em PDF (via S3 Supabase)</div>
+                        <input type="file" id="pdf-upload" accept="application/pdf" style="display:none;" onchange="window.uploadPDF(event)">
+                        <button class="btn btn-outline" style="height:32px; font-size:12px;" onclick="document.getElementById('pdf-upload').click()">Selecionar Arquivo</button>
+                        <div id="upload-status" style="font-size:11px; margin-top:8px; color:var(--accent-primary);"></div>
+                    </div>
+                `;
+            }
+
+            let leadTagsHtml = `<span class="tag ${tagClass}">${tagLabel}</span>`;
+            if(lead.custom_tags) {
+                lead.custom_tags.forEach(t => {
+                    leadTagsHtml += `<span class="tag tag-custom">${t} <iconify-icon icon="solar:close-circle-bold" style="cursor:pointer; margin-left:4px;" onclick="window.removeTagFromLead('${t}')"></iconify-icon></span>`;
+                });
+            }
+
+            let availableTagsHtml = "";
+            if(window.customTags.length > 0) {
+                availableTagsHtml = `<select class="input-field" style="height: 32px; font-size: 12px; margin-top: 12px; width: 100%;" onchange="if(this.value) window.assignTagToLead(this.value)">
+                    <option value="">+ Adicionar tag customizada...</option>
+                    ${window.customTags.map(t => `<option value="${t}">${t}</option>`).join('')}
+                </select>`;
+            }
+
+            const content = `
+                <div class="sp-section">
+                    <div class="tag-container" style="margin-bottom: 16px;">
+                        ${leadTagsHtml}
+                    </div>
+                    ${availableTagsHtml}
+
+                    <div style="font-size: 14px; margin-bottom: 8px; margin-top:16px;"><b>Email:</b> ${lead.email}</div>
+                    <div style="font-size: 14px; margin-bottom: 8px;">
+                        <b>WhatsApp:</b> ${lead.whatsapp || '(00) 00000-0000'}
+                        <div style="display: flex; gap: 8px; margin-top: 8px;">
+                            <a href="https://wa.me/55${(lead.whatsapp || '').replace(/\D/g, '')}" target="_blank" class="btn btn-outline" style="height: 30px; font-size: 12px;"><iconify-icon icon="solar:chat-round-line-bold-duotone"></iconify-icon> Abrir Web</a>
+                            <button class="btn btn-gold" style="height: 30px; font-size: 12px;" onclick="window.sendEvoMessage('${(lead.whatsapp || '').replace(/\D/g, '')}')"><iconify-icon icon="solar:plain-bold-duotone"></iconify-icon> Disparar API</button>
+                        </div>
+                        <div id="evo-send-status-${lead.id}" style="font-size: 11px; margin-top: 4px; color: var(--accent-primary);"></div>
+                    </div>
+                    <div style="font-size: 14px; margin-top: 16px;"><b>Objetivo:</b> ${lead.primary_goal || 'Não preenchido'}</div>
+                </div>
+
+                <div class="sp-section">
+                    <div class="sp-title">Documentação (PDF)</div>
+                    ${pdfHtml}
+                </div>
+
+                <div class="sp-section">
+                    <div class="sp-title">Impacto no Negócio</div>
+                    <div class="sp-box">
+                        <b>Dependência de Operação:</b> ${lead.business_dependency || 'N/A'}<br><br>
+                        <b>Consequência e Risco:</b> ${lead.business_growth || 'N/A'}
+                    </div>
+                </div>
+
+                <div class="sp-section">
+                    <div class="sp-title">Anotações do Comercial</div>
+                    <textarea id="lead-admin-notes" class="input-field" style="height: 100px; padding: 12px; resize: vertical;" placeholder="Adicione observações sobre a negociação, objeções, etc..." onblur="window.saveAdminNotes()">${lead.admin_notes || ''}</textarea>
+                    <div id="notes-save-status" style="font-size: 11px; color: var(--accent-primary); margin-top: 4px; height: 16px;"></div>
+                </div>
+
+                <div class="sp-section">
+                    <div class="sp-title">Argumento Comercial Gerado por IA</div>
+                    <p style="font-size: 12px; color: var(--text-secondary)">Copie este texto para iniciar o follow-up abordando a dor exata dele.</p>
+                    <div class="sales-copy">Olá ${lead.name.split(" ")[0]}! Nosso sistema identificou um alerta de Risco Oculto no seu perfil.
+
+Potencial: ${tagLabel}
+Foco: Performance Empresarial
+
+Pontos Críticos Identificados:
+• Qualidade do sono degradando capacidade de decisão
+• Impacto direto no teto de faturamento da sua empresa
+
+Você tem 15 minutos amanhã para abrir o mapa e traçar um plano de ação?</div>
+                    <button class="btn btn-outline" style="width: 100%; margin-top: 16px;" onclick="alert('Argumento copiado!')"><iconify-icon icon="solar:copy-bold-duotone"></iconify-icon> Copiar Argumento</button>
+                </div>
+            `;
+            document.getElementById("sp-content").innerHTML = content;
+            document.getElementById("side-panel").classList.add("open");
+        };
+
+        window.closePanel = function() {
+            document.getElementById("side-panel").classList.remove("open");
+        };
+
+        // --- File Upload ---
+        window.uploadPDF = async function(e) {
+            const file = e.target.files[0];
+            if(!file || !window.currentLeadId) return;
+            const statusDiv = document.getElementById("upload-status");
+            statusDiv.innerText = "Fazendo upload para o S3 (Supabase)...";
+            const fileName = `${window.currentLeadId}_${Date.now()}.pdf`;
+            const { data, error } = await dbClient.storage.from('pdfs').upload(fileName, file);
+            if(error) {
+                console.error("Upload error:", error);
+                statusDiv.innerText = "Erro no upload: " + error.message;
+                return;
+            }
+            const { data: publicUrlData } = dbClient.storage.from('pdfs').getPublicUrl(fileName);
+            const publicURL = publicUrlData.publicUrl;
+            statusDiv.innerText = "Atualizando registro no CRM...";
+            const { error: dbError } = await dbClient.from('leads').update({ pdf_url: publicURL }).eq('id', window.currentLeadId);
+            if(dbError) {
+                statusDiv.innerText = "Erro ao atualizar registro.";
+                return;
+            }
+            statusDiv.innerText = "Sucesso! PDF anexado.";
+            const lead = window.allLeads.find(l => l.id === window.currentLeadId);
+            if(lead) lead.pdf_url = publicURL;
+            setTimeout(() => { window.openPanel(window.currentLeadId); }, 1000);
+        };
+
+        // --- Save Admin Notes ---
+        window.saveAdminNotes = async function() {
+            if(!window.currentLeadId) return;
+            const notes = document.getElementById("lead-admin-notes").value;
+            const statusDiv = document.getElementById("notes-save-status");
+            statusDiv.innerText = "Salvando...";
+            const { error } = await dbClient.from('leads').update({ admin_notes: notes }).eq('id', window.currentLeadId);
+            if(error) {
+                statusDiv.innerText = "Erro ao salvar anotações.";
+                statusDiv.style.color = "red";
+            } else {
+                statusDiv.innerText = "Salvo com sucesso!";
+                statusDiv.style.color = "var(--accent-primary)";
+                const lead = window.allLeads.find(l => l.id === window.currentLeadId);
+                if(lead) lead.admin_notes = notes;
+                setTimeout(() => { statusDiv.innerText = ""; }, 2000);
+            }
+        };
+
+        // --- CSV Export ---
+        window.exportCSV = function() {
+            if(window.allLeads.length === 0) return alert('Nenhum dado para exportar.');
+            let csvContent = "data:text/csv;charset=utf-8,";
+            csvContent += "Nome,Email,WhatsApp,Score,Potencial,Status\n";
+            window.allLeads.forEach(l => {
+                let tagLabel = l.risk_level === "high" ? "Alto Potencial" : (l.risk_level === "medium" ? "Médio Potencial" : "Baixo Potencial");
+                let row = `"${l.name}","${l.email}","${l.whatsapp}",${l.score_total || 0},"${tagLabel}","${l.admin_status || 'new'}"`;
+                csvContent += row + "\n";
+            });
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", "leads_crm.csv");
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        };
+
+        // --- Evolution API Connection ---
+        window.connectEvolution = async function() {
+            const url = document.getElementById('evo-url').value.trim().replace(/\/$/, "");
+            const key = document.getElementById('evo-key').value.trim();
+            const instance = document.getElementById('evo-instance').value.trim();
+            const statusDiv = document.getElementById("evo-status");
+            const qrContainer = document.getElementById("evo-qrcode-container");
+            const qrImg = document.getElementById("evo-qrcode-img");
+            
+            if(!url || !key || !instance) {
+                statusDiv.innerText = "Preencha todos os campos!";
+                statusDiv.style.color = "red";
+                return;
+            }
+            
+            // Save config
+            window.evoConfig = { url, key, instance };
+            localStorage.setItem("crm_evo_config", JSON.stringify(window.evoConfig));
+            
+            statusDiv.innerText = "Gerando QR Code...";
+            statusDiv.style.color = "var(--text-secondary)";
+            qrContainer.style.display = "none";
+            
+            try {
+                // Tenta criar a instância (se não existir) ou conectar (se já existir e estiver offline)
+                const response = await fetch(`${url}/instance/create`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'apikey': key },
+                    body: JSON.stringify({ instanceName: instance, qrcode: true })
+                });
+                
+                const data = await response.json();
+                
+                if(data.qrcode && data.qrcode.base64) {
+                    qrImg.src = data.qrcode.base64;
+                    qrContainer.style.display = "block";
+                    statusDiv.innerText = "QR Code pronto! Leia com o WhatsApp.";
+                    statusDiv.style.color = "var(--accent-primary)";
+                } else if(data.instance && data.instance.state === "open") {
+                    statusDiv.innerText = "Instância já está CONECTADA!";
+                    statusDiv.style.color = "var(--accent-primary)";
+                } else {
+                    // Fallback para conectar se já foi criada
+                    const fetchConnect = await fetch(`${url}/instance/connect/${instance}`, {
+                        headers: { 'apikey': key }
+                    });
+                    const dataConnect = await fetchConnect.json();
+                    if(dataConnect.base64) {
+                        qrImg.src = dataConnect.base64;
+                        qrContainer.style.display = "block";
+                        statusDiv.innerText = "QR Code pronto! Leia com o WhatsApp.";
+                        statusDiv.style.color = "var(--accent-primary)";
+                    } else {
+                        statusDiv.innerText = "Erro ao obter QR. Verifique sua API.";
+                        statusDiv.style.color = "red";
+                    }
+                }
+            } catch(e) {
+                console.error(e);
+                statusDiv.innerText = "Erro de conexão: " + e.message;
+                statusDiv.style.color = "red";
+            }
+        };
+
+        // --- Evolution API: Disparar do CRM ---
+        window.sendEvoMessage = async function(phone) {
+            const lead = window.allLeads.find(l => l.id === window.currentLeadId);
+            const statusDiv = document.getElementById(`evo-send-status-${lead.id}`);
+            
+            if(!window.evoConfig.url || !window.evoConfig.key || !window.evoConfig.instance) {
+                statusDiv.innerText = "Configure a API Evolution primeiro.";
+                return;
+            }
+            
+            statusDiv.innerText = "Enviando...";
+            
+            // Text to send
+            const msgBody = `Olá ${lead.name.split(" ")[0]}! Aqui é do time do Código da Longevidade. Identificamos pontos cruciais no seu diagnóstico de Performance Empresarial.`;
+
+            try {
+                // Se tiver PDF, enviamos o PDF com o texto como legenda
+                if(lead.pdf_url) {
+                    const resMedia = await fetch(`${window.evoConfig.url}/message/sendMedia/${window.evoConfig.instance}`, {
+                        method: "POST",
+                        headers: { 'Content-Type': 'application/json', 'apikey': window.evoConfig.key },
+                        body: JSON.stringify({
+                            number: "55" + phone,
+                            options: { delay: 1200 },
+                            mediaMessage: {
+                                mediatype: "document",
+                                fileName: `Mapa_Longevidade_${lead.name.split(" ")[0]}.pdf`,
+                                caption: msgBody + "\n\nSegue o seu Dossiê Exclusivo em anexo:",
+                                media: lead.pdf_url
+                            }
+                        })
+                    });
+                    
+                    if(resMedia.ok) {
+                        statusDiv.innerText = "PDF enviado com sucesso!";
+                        statusDiv.style.color = "var(--accent-gold)";
+                    } else {
+                        const err = await resMedia.json();
+                        statusDiv.innerText = "Erro: " + (err.message || resMedia.statusText);
+                        statusDiv.style.color = "red";
+                    }
+                } else {
+                    // Sem PDF, envia só texto
+                    const resText = await fetch(`${window.evoConfig.url}/message/sendText/${window.evoConfig.instance}`, {
+                        method: "POST",
+                        headers: { 'Content-Type': 'application/json', 'apikey': window.evoConfig.key },
+                        body: JSON.stringify({
+                            number: "55" + phone,
+                            options: { delay: 1200 },
+                            textMessage: { text: msgBody }
+                        })
+                    });
+                    
+                    if(resText.ok) {
+                        statusDiv.innerText = "Mensagem enviada com sucesso!";
+                        statusDiv.style.color = "var(--accent-gold)";
+                    } else {
+                        const err = await resText.json();
+                        statusDiv.innerText = "Erro: " + (err.message || resText.statusText);
+                        statusDiv.style.color = "red";
+                    }
+                }
+            } catch(e) {
+                console.error(e);
+                statusDiv.innerText = "Falha de rede.";
+                statusDiv.style.color = "red";
+            }
+            
+            setTimeout(() => { if(statusDiv) statusDiv.innerText = ""; }, 3000);
+        };
+
+        // Bootstrap explicitly without DOMContentLoaded
+        window.onload = function() {
+            window.loadLeads();
+            
+            // Just in case, add explicit listeners too
+            const nPipe = document.getElementById('nav-pipeline');
+            const nCont = document.getElementById('nav-contacts');
+            const nSet = document.getElementById('nav-settings');
+            
+            if(nPipe) nPipe.addEventListener('click', () => window.switchView('pipeline'));
+            if(nCont) nCont.addEventListener('click', () => window.switchView('contacts'));
+            if(nSet) nSet.addEventListener('click', () => window.switchView('settings'));
+        };
+    </script>
+</body>
+</html>

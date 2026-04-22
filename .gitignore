@@ -1,0 +1,25 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+pdf_reader.py
+remove_bg.py
+
+# Tests & scripts de desenvolvimento
+test.cjs
+test_puppeteer.js
+test_supabase.cjs
+screenshot.js
+screenshot.cjs
+
+# Arquivos de referência
+refs/
+LONGEVITY\ 23.04.pdf
+pdf_page.png
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Credenciais
+credenciasi

@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sua Longevidade — Mapa de Risco</title>
+    <!-- Iconify Global -->
+    <script src="https://code.iconify.design/iconify-icon/1.0.7/iconify-icon.min.js"></script>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        /* Base styles (Mobile First) */
+        .res-container { width: 100%; max-width: 1200px; margin: 0 auto; padding: 24px 16px; box-sizing: border-box; overflow-x: hidden; }
+
+        /* Dashboard Hero */
+        .dash-header { display: flex; flex-direction: column; align-items: stretch; gap: 16px; margin-bottom: 32px; width: 100%; box-sizing: border-box; }
+        .dh-title { font-size: 32px; letter-spacing: -1px; line-height: 1.1; margin-bottom: 8px; word-wrap: break-word; }
+        .dh-sub { font-size: 16px; color: var(--text-secondary); max-width: 100%; word-wrap: break-word; }
+        .dh-score-box { background: rgba(255,255,255,0.6); padding: 20px; border-radius: 20px; border: 1px solid var(--border); text-align: left; width: 100%; box-sizing: border-box; }
+        .score-big { font-family: var(--font-mono); font-size: 64px; font-weight: 700; color: var(--risk-medium); line-height: 0.8; letter-spacing: -3px; }
+
+        /* Layout Grid */
+        .dash-grid { display: grid; grid-template-columns: 1fr; gap: 24px; margin-bottom: 40px; width: 100%; box-sizing: border-box; }
+
+        /* Anatomy section goes first on mobile */
+        .anatomy-container { position: relative; height: 360px; width: 100%; display: flex; justify-content: center; align-items: center; margin-bottom: 24px; order: -1; }
+        .anatomy-svg { height: 100%; max-width: 100%; opacity: 0.35; object-fit: contain; }
+
+        /* Nodes */
+        .node { position: absolute; width: 16px; height: 16px; border-radius: 50%; background: var(--accent-primary); transform: translate(-50%, -50%); cursor: pointer; transition: all 0.3s; z-index: 10; }
+        .node::before { content: ''; position: absolute; top: -8px; left: -8px; right: -8px; bottom: -8px; border: 2px solid var(--accent-primary); border-radius: 50%; opacity: 0; animation: pulse 2s infinite; }
+        .node:hover { transform: translate(-50%, -50%) scale(1.5); }
+        .node.high::before { border-color: var(--risk-high); }
+        .node.high { background: var(--risk-high); box-shadow: 0 0 15px var(--risk-high); }
+        .node.medium::before { border-color: var(--risk-medium); }
+        .node.medium { background: var(--risk-medium); box-shadow: 0 0 15px var(--risk-medium); }
+        .node.low::before { border-color: var(--risk-low); }
+        .node.low { background: var(--risk-low); box-shadow: 0 0 15px var(--risk-low); }
+
+        .connector-svg { display: none; }
+        .connector-line { fill: none; stroke: var(--border); stroke-width: 1.5; stroke-dasharray: 4; }
+
+        @keyframes pulse { 0% { transform: scale(0.5); opacity: 1; } 100% { transform: scale(1.5); opacity: 0; } }
+
+        /* Pillar Cards */
+        .pillar-col { display: grid; grid-template-columns: 1fr; gap: 16px; width: 100%; box-sizing: border-box; }
+        .p-card { background: rgba(255, 255, 255, 0.4); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.8); border-radius: 16px; padding: 20px; position: relative; transition: transform 0.3s; width: 100%; box-sizing: border-box; }
+        .p-card:hover { transform: translateY(-4px); border-color: var(--accent-primary); }
+
+        .p-header { display: flex; flex-direction: row; align-items: center; justify-content: space-between; margin-bottom: 12px; gap: 8px;}
+        .p-title { font-family: var(--font-display); font-size: 18px; font-weight: 600; display: flex; align-items: center; gap: 8px; line-height: 1.2;}
+        .p-status { font-size: 11px; text-transform: uppercase; font-weight: bold; letter-spacing: 1px; padding: 4px 10px; border-radius: 100px; flex-shrink: 0;}
+        .p-desc { font-size: 13px; color: var(--text-secondary); line-height: 1.4; }
+
+        /* Bottom Sections */
+        .split-section { display: grid; grid-template-columns: 1fr; gap: 20px; margin-bottom: 40px; width: 100%; box-sizing: border-box;}
+        .insight-box { background: #FFFFFF; border-radius: 20px; padding: 24px; border: 1px solid var(--border); box-shadow: 0 10px 40px rgba(0,0,0,0.03); width: 100%; box-sizing: border-box; }
+        .insight-box h2 { font-size: 20px; margin-bottom: 16px; display: flex; align-items:center; gap: 8px; font-family: var(--font-display); }
+
+        .cta-box { background: var(--accent-primary); color: white; border-radius: 20px; padding: 32px 20px; text-align: center; overflow: hidden; position: relative; width: 100%; box-sizing: border-box; }
+        .cta-box h2 { color: white; margin-bottom: 16px; font-size: 26px; line-height: 1.2; word-wrap: break-word;}
+        .cta-box p { color: rgba(255,255,255,0.8); margin-bottom: 24px; font-size: 15px; word-wrap: break-word;}
+        .cta-box .btn { width: 100%; padding: 16px 0; border-radius: 100px; font-weight: bold; background: white; color: var(--accent-primary); }
+
+        /* Small badges */
+        .bg-red { background: rgba(232, 64, 64, 0.1); color: var(--risk-high); border: 1px solid rgba(232, 64, 64, 0.3); }
+        .bg-yellow { background: rgba(245, 166, 35, 0.1); color: var(--risk-medium); border: 1px solid rgba(245, 166, 35, 0.3);}
+        .bg-green { background: rgba(39, 174, 96, 0.1); color: var(--risk-low); border: 1px solid rgba(39, 174, 96, 0.3);}
+
+
+        /* --- RESPONSIVE UPSCALING (TABLET & DESKTOP) --- */
+
+        @media (min-width: 600px) {
+            .dh-title { font-size: 38px; }
+            .score-big { font-size: 72px; }
+            .anatomy-container { height: 400px; }
+        }
+
+        @media (min-width: 768px) {
+            .res-container { padding: 48px 24px; }
+            .dash-header { flex-direction: row; align-items: flex-end; justify-content: space-between; gap: 24px; margin-bottom: 48px; }
+            .dh-score-box { width: auto; text-align: right; padding: 24px 32px;}
+            .pillar-col { grid-template-columns: 1fr 1fr; gap: 16px; }
+            .dash-grid { gap: 32px; padding: 0; }
+            .split-section { grid-template-columns: 1fr 1fr; gap: 32px; margin-bottom: 64px; }
+            .insight-box { padding: 40px; }
+            .insight-box h2 { font-size: 24px; }
+            .cta-box { padding: 48px; }
+            .cta-box h2 { font-size: 32px; }
+            .cta-box .btn { width: 300px; display: inline-flex; justify-content: center;}
+        }
+
+        @media (min-width: 1024px) {
+            .dash-grid { grid-template-columns: 1fr 380px 1fr; gap: 40px; margin-bottom: 64px; align-items: stretch; order: 0;}
+            .pillar-col { grid-template-columns: 1fr; gap: 24px; align-content: space-between; }
+            .p-card { height: 100%; display: flex; flex-direction: column; justify-content: flex-start; padding: 24px;}
+            .anatomy-container { height: 600px; order: 0; } 
+            .dh-title { font-size: 48px; }
+            .dh-sub { font-size: 18px; }
+            .connector-svg { display: block; }
+        }
+    </style>
+</head>
+<body>
+    <div class="res-container">
+        <div id="results-content"></div>
+    </div>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", () => {
+            const data = JSON.parse(localStorage.getItem("mle_session"));
+            if(!data) { window.location.href = "index.html"; return; }
+            
+            const root = document.getElementById("results-content");
+            const score = data.scores.total || 34; // Random dummy generated
+            const isMale = data.answers["sexo"] === "M";
+            
+            // Name formatter
+            const firstName = data.user.name ? data.user.name.split(" ")[0] : "Executivo";
+            
+            // Generate arbitrary statuses for pillars based on UI rules
+            const getStatus = (seed) => {
+                const s = score + seed;
+                if(s % 3 === 0) return { class: 'high', label: 'Risco Alto', color: 'bg-red' };
+                if(s % 2 === 0) return { class: 'medium', label: 'Moderado', color: 'bg-yellow' };
+                return { class: 'low', label: 'Otimizado', color: 'bg-green' };
+            };
+
+            const p1 = getStatus(1); // Brain / Cognitive
+            const p2 = getStatus(2); // Heart / Metabolic
+            const p3 = getStatus(0); // Lifestyle / Muscles
+            const p4 = getStatus(4); // Gut / Hormonal
+            const p5 = getStatus(5); // Sleep (eyes)
+
+            // Dynamic Copy based on precise data
+            const exactAge = data.answers["idade"] || "sua idade atual";
+            
+            const html = `
+                <div class="dash-header reveal">
+                    <div>
+                        <div style="text-transform: uppercase; letter-spacing: 2px; font-weight: bold; font-size: 12px; color: var(--accent-primary); margin-bottom: 8px;">Dossiê Clínico ${isMale ? 'Gerado' : 'Gerada'}</div>
+                        <h1 class="dh-title">Seu Bioma de<br>Alta Performance.</h1>
+                        <p class="dh-sub">Mapeamento anatômico cruzado contra sua realidade operacional. Encontramos vazamentos críticos.</p>
+                    </div>
+                    <div class="dh-score-box">
+                        <div style="font-size: 13px; text-transform: uppercase; font-weight: 600; color: var(--text-muted); margin-bottom: 4px;">Índice de Longevidade</div>
+                        <div class="score-big">${score}<span style="font-size:32px; color:var(--text-muted)">/50</span></div>
+                    </div>
+                </div>
+
+                <div class="dash-grid reveal delay-200">
+                    
+                    <!-- Left Pillars -->
+                    <div class="pillar-col">
+                        <div class="p-card">
+                            <div class="p-header">
+                                <div class="p-title"><iconify-icon icon="solar:brain-bold-duotone" style="color: var(--accent-primary)"></iconify-icon> Cognitivo</div>
+                                <div class="p-status ${p1.color}">${p1.label}</div>
+                            </div>
+                            <div class="p-desc">Sobrecarga identificada. O estresse operacional contínuo (Burnout Rate) afeta a clareza de tomada de decisão.</div>
+                        </div>
+                        <div class="p-card">
+                            <div class="p-header">
+                                <div class="p-title"><iconify-icon icon="solar:heart-pulse-bold-duotone" style="color: var(--accent-primary)"></iconify-icon> Metabólico</div>
+                                <div class="p-status ${p2.color}">${p2.label}</div>
+                            </div>
+                            <div class="p-desc">Marcadores apontam para inflamação sistêmica que destrói sua base de energia ao longo dos anos.</div>
+                        </div>
+                    </div>
+
+                    <!-- Center Body -->
+                    <div class="anatomy-container">
+                        <!-- High Definition Medical 3D Scan -->
+                        <img src="medical_body_v3.png" class="anatomy-svg" alt="Medical Scan">
+
+                        <!-- Glowing Data Nodes linked to CSS classes -->
+                        <div class="node ${p1.class}" style="top: 10%; left: 50%;" title="Cérebro"></div>
+                        <div class="node ${p5.class}" style="top: 7%; left: 50%;" title="Olhos/Sono"></div>
+                        <div class="node ${p2.class}" style="top: 28%; left: 50%;" title="Coração/Metabólico"></div>
+                        <div class="node ${p4.class}" style="top: 48%; left: 50%;" title="Hormonal/Eixo Endócrino"></div>
+                        <div class="node ${p3.class}" style="top: 72%; left: 40%;" title="Estilo de Vida/Articulações"></div>
+                    </div>
+
+                    <!-- Right Pillars -->
+                    <div class="pillar-col">
+                        <div class="p-card">
+                            <div class="p-header">
+                                <div class="p-title"><iconify-icon icon="solar:bolt-circle-bold-duotone" style="color: var(--accent-primary)"></iconify-icon> Hormonal</div>
+                                <div class="p-status ${p4.color}">${p4.label}</div>
+                            </div>
+                            <div class="p-desc">Oscilações diárias. A testosterona e cortisol estão desalinhados com o eixo de performance exigido de um CEO.</div>
+                        </div>
+                        <div class="p-card">
+                            <div class="p-header">
+                                <div class="p-title"><iconify-icon icon="solar:moon-stars-bold-duotone" style="color: var(--accent-primary)"></iconify-icon> Sono</div>
+                                <div class="p-status ${p5.color}">${p5.label}</div>
+                            </div>
+                            <div class="p-desc">Recuperação falha. Máquina trabalhando sem reparo durante a noite, resultando em "brain fog".</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="split-section reveal delay-300">
+                    <div class="insight-box">
+                        <h2 style="font-family: var(--font-display); font-size: 24px; margin-bottom: 24px; display: flex; align-items:center; gap: 8px;">
+                            <iconify-icon icon="solar:danger-triangle-bold-duotone" style="color: var(--risk-high)"></iconify-icon> Prognóstico Físico
+                        </h2>
+                        <p style="color: var(--text-secondary); margin-bottom: 16px;">
+                            Aos <b>${exactAge} anos</b> de idade, a conta biológica começou a chegar. Seus hábitos atuais estão impondo um desgaste acelerado nos seus sistemas de filtração hepática e endócrina. 
+                        </p>
+                        <p style="color: var(--text-secondary);">
+                            Se o ritmo e as negligências na recuperação e descanso não forem endereçados, a probabilidade de ocorrência de burnout funcional nos próximos 2 a 3 anos passa da casa de alerta máximo de risco corporativo.
+                        </p>
+                    </div>
+
+                    <div class="insight-box">
+                        <h2 style="font-family: var(--font-display); font-size: 24px; margin-bottom: 24px; display: flex; align-items:center; gap: 8px;">
+                            <iconify-icon icon="solar:buildings-bold-duotone" style="color: var(--risk-medium)"></iconify-icon> Exposição do Negócio
+                        </h2>
+                        <p style="color: var(--text-secondary); margin-bottom: 16px;">
+                            A sua empresa reflete a sua performance. Com o seu peso atual oscilador e falta de consistência em marcadores-base, o gargalo da sua empresa hoje é sua indisponibilidade biológica.
+                        </p>
+                        <p style="color: var(--text-secondary); font-weight: bold; color: var(--text-primary);">
+                            Se você cair, a inovação trava. O seu corpo é o passivo menos segurado do seu principal ativo.
+                        </p>
+                    </div>
+                </div>
+
+                <div class="cta-box reveal delay-400">
+                    <div style="position: absolute; top:-50%; left:-20%; width:100%; height:200%; background: radial-gradient(circle, rgba(255,255,255,0.1), transparent 70%);"></div>
+                    <div style="position: relative; z-index: 10;">
+                        <h2>Seu relatório detalhado foi enviado em PDF.</h2>
+                        <p>No evento de 23 de Abril, vamos aprofundar esses dados.<br>Não terceirize o risco da sua companhia para a biologia do acaso. Intervenção agressiva já.</p>
+                        <button class="btn" style="background: white; color: var(--accent-primary); font-weight: bold; width: 300px; padding: 18px 0; border-radius:100px;">
+                            Agendar Blindagem Médica
+                        </button>
+                    </div>
+                </div>
+            `;
+            root.innerHTML = html;
+
+            // Trigger Reveals manually since it's injected async
+            setTimeout(() => {
+                document.querySelectorAll('.reveal').forEach(el => el.classList.add('active'));
+            }, 100);
+        });
+    </script>
+</body>
+</html>

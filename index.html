@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Code Longevity — Mapa de Longevidade Executiva</title>
+    <!-- Font for the logo -->
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400;1,600&display=swap" rel="stylesheet">
+    <!-- Iconify for professional icons -->
+    <script src="https://code.iconify.design/iconify-icon/1.0.7/iconify-icon.min.js"></script>
+    <link rel="stylesheet" href="styles.css?v=3">
+    <!-- Supabase SDK -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+
+    <!-- 1. LOADING SCREEN -->
+    <div id="loading-screen" class="screen">
+        <iconify-icon icon="solar:atom-bold-duotone" class="loading-icon"></iconify-icon>
+        <div style="text-align: center; margin-bottom: 24px;" class="text-reveal-wrapper">
+            <h1 class="text-reveal-content" style="margin-bottom: 8px; line-height: 1.1;">
+                <span style="font-size: 32px; color: var(--accent-primary); font-weight: 400; letter-spacing: -1px; font-family: 'Playfair Display', serif;">Código</span><br>
+                <span style="font-size: 36px; color: #B89758; font-weight: 400; font-style: italic; letter-spacing: -1px; font-family: 'Playfair Display', serif;">da Longevidade</span>
+            </h1>
+        </div>
+        <div class="loading-bar-container">
+            <div class="loading-bar" id="loading-bar-fill"></div>
+        </div>
+        <p class="loading-message" id="loading-msg">Preparando sua análise...</p>
+    </div>
+
+    <!-- 2. WELCOME SCREEN -->
+    <div id="welcome-screen" class="screen" hidden>
+        <div class="glass-card welcome-card">
+            
+            <div class="reveal" style="text-align: center; margin-bottom: 32px;">
+                <div style="font-family: 'Inter', sans-serif; font-size: 10px; letter-spacing: 3px; color: var(--text-muted); text-transform: uppercase; margin-bottom: 16px;">MEDKINLIFE &middot; MOOVE HUB &middot; CATALISA.EDU APRESENTAM</div>
+                
+                <h1 style="margin-bottom: 8px; line-height: 1.1;">
+                    <span style="font-size: 48px; color: var(--accent-primary); font-weight: 400; letter-spacing: -1px; font-family: 'Playfair Display', serif;">Código</span><br>
+                    <span style="font-size: 54px; color: #B89758; font-weight: 400; font-style: italic; letter-spacing: -1px; font-family: 'Playfair Display', serif;">da Longevidade</span>
+                </h1>
+                <div style="font-family: 'Space Grotesk', monospace; font-size: 11px; letter-spacing: 4px; color: var(--text-muted); text-transform: uppercase; margin-top: 12px;">PRIVATE EDITION</div>
+            </div>
+            
+            <p class="welcome-subtitle reveal delay-200">
+                Acesso exclusivo para os 60 CEOs presentes no nosso evento presencial do dia <strong>23 de Abril</strong>.<br><br>
+                Descubra o risco oculto que sua biologia atual causa no faturamento e performance do seu negócio.
+            </p>
+
+            <form id="welcome-form" class="reveal delay-500">
+                <div class="input-group">
+                    <input type="text" id="lead_name" class="input-field" placeholder="Nome completo" required>
+                </div>
+                <div class="input-group">
+                    <input type="tel" id="lead_whatsapp" class="input-field" placeholder="WhatsApp: (11) 99999-9999" required>
+                </div>
+                <div class="input-group">
+                    <input type="email" id="lead_email" class="input-field" placeholder="E-mail corporativo" required>
+                </div>
+                <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 8px;">
+                    Iniciar meu diagnóstico <iconify-icon icon="solar:arrow-right-linear" style="font-size: 20px;"></iconify-icon>
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- 3. GAMIFIED QUIZ SCREEN -->
+    <div id="quiz-screen" class="screen" hidden>
+        <header class="quiz-header">
+            <div class="quiz-block-title" id="quiz-block-label">Bloco 1 de 8 — Dados Físicos</div>
+            <div class="quiz-time" id="quiz-time-label">~8 min restantes</div>
+            <div class="quiz-progress-track">
+                <div class="quiz-progress-fill" id="quiz-progress-bar"></div>
+            </div>
+        </header>
+
+        <div class="quiz-container">
+            <div class="micro-result" id="micro-result-overlay">
+                <iconify-icon class="micro-icon" id="micro-icon" icon="solar:check-circle-bold-duotone"></iconify-icon>
+                <div class="micro-text" id="micro-title">Próximo Nível</div>
+            </div>
+
+            <!-- Dynamic Question Wrapper -->
+            <div class="question-wrapper" id="question-wrapper">
+                <h2 class="question-text" id="question-title">Carregando pergunta...</h2>
+                <div id="question-content">
+                    <!-- Dynamic rendering of Format A, B, or C -->
+                </div>
+                
+                <div class="quiz-nav-row">
+                    <button class="btn btn-outline" id="btn-quiz-prev" style="visibility: hidden;">
+                        <iconify-icon icon="solar:arrow-left-linear" style="font-size: 20px;"></iconify-icon> Voltar
+                    </button>
+                    <button class="btn btn-primary" id="btn-quiz-next" disabled>
+                        Próximo <iconify-icon icon="solar:arrow-right-linear" style="font-size: 20px;"></iconify-icon>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 5. PROCESSING SCREEN -->
+    <div id="processing-screen" class="screen" hidden>
+        <div class="glass-card welcome-card" style="padding: 48px;">
+            <h2 class="welcome-title text-reveal-wrapper" style="margin-bottom: 40px; font-size: 32px;"><span class="text-reveal-content">Processando diagnóstico</span></h2>
+            <div id="processing-steps" style="text-align: left;">
+                <div class="step-item" id="step-0"><div class="step-icon"><iconify-icon icon="solar:spinner-bold" class="spin-icon"></iconify-icon></div><div class="step-text">Registrando biometria de entrada...</div></div>
+                <div class="step-item" id="step-1"><div class="step-icon"><iconify-icon icon="solar:spinner-bold" class="spin-icon"></iconify-icon></div><div class="step-text">Cruzando marcadores metabólicos...</div></div>
+                <div class="step-item" id="step-2"><div class="step-icon"><iconify-icon icon="solar:spinner-bold" class="spin-icon"></iconify-icon></div><div class="step-text">IA gerando seu prognóstico de 5 anos...</div></div>
+                <div class="step-item" id="step-3"><div class="step-icon"><iconify-icon icon="solar:spinner-bold" class="spin-icon"></iconify-icon></div><div class="step-text">Calculando Exposição de Risco Empresarial...</div></div>
+                <div class="step-item" id="step-4"><div class="step-icon"><iconify-icon icon="solar:spinner-bold" class="spin-icon"></iconify-icon></div><div class="step-text">Homologando dossiê PDF final...</div></div>
+                <div class="step-item" id="step-5"><div class="step-icon"><iconify-icon icon="solar:spinner-bold" class="spin-icon"></iconify-icon></div><div class="step-text">Desbloqueando bioma criptografado...</div></div>
+            </div>
+            
+            <div class="loading-bar-container" style="width: 100%; margin-top: 40px;">
+                <div class="loading-bar" id="processing-bar" style="width: 0%; transition: width 0s;"></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js?v=3"></script>
+    <script>
+        // Trigger reveal animations on load
+        setTimeout(() => {
+            document.querySelectorAll('.reveal').forEach(el => el.classList.add('active'));
+            document.querySelectorAll('.text-reveal-wrapper').forEach(el => el.classList.add('reveal-active'));
+        }, 300);
+    </script>
+</body>
+</html>
