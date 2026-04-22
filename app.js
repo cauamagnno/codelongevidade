@@ -411,19 +411,69 @@ function showMicroResult(title, icon, cb) {
     }, 900);
 }
 
+function calculateScores() {
+    const a = state.answers;
+    const getNum = (id) => {
+        const v = a[id];
+        return (v !== undefined && v !== '') ? Number(v) : 0;
+    };
+
+    // IMC (recalculado direto das respostas)
+    const peso = parseFloat(a['peso']) || 0;
+    const altura = parseFloat(a['altura']) || 0;
+    let imcScore = 0;
+    if (peso && altura) {
+        const imc = peso / Math.pow(altura / 100, 2);
+        imcScore = (imc >= 18.5 && imc <= 24.9) ? 2 : (imc < 18.5 ? 1 : 0);
+    }
+
+    // Metabólico: bloco 2 + IMC (max 16)
+    const metabolic = Math.min(10, Math.round(
+        (getNum('b2q1') * 2 + getNum('b2q2') * 2 + getNum('b2q3') * 3 + imcScore) / 16 * 10
+    ));
+
+    // Hormonal/Energia: bloco 3 (max 18)
+    const b3q1 = getNum('b3q1');
+    const b3q1Score = b3q1 <= 3 ? 0 : (b3q1 <= 6 ? 1 : 2);
+    const hormonal = Math.min(10, Math.round(
+        (b3q1Score * 4 + getNum('b3q2') * 3 + getNum('b3q3') * 2) / 18 * 10
+    ));
+
+    // Sono: bloco 4 (max 18)
+    const sleepH = parseFloat(a['b4q1']) || 0;
+    const sleepHScore = sleepH >= 7 ? 2 : (sleepH >= 5 ? 1 : 0);
+    const sleep = Math.min(10, Math.round(
+        (sleepHScore * 4 + getNum('b4q2') * 3 + getNum('b4q3') * 2) / 18 * 10
+    ));
+
+    // Estresse: bloco 5, escala invertida (max 14)
+    const b5q1 = getNum('b5q1');
+    const b5q1Score = b5q1 <= 3 ? 2 : (b5q1 <= 6 ? 1 : 0);
+    const stress = Math.min(10, Math.round(
+        (b5q1Score * 4 + getNum('b5q2') * 3) / 14 * 10
+    ));
+
+    // Estilo de vida: bloco 6 (max 12)
+    const lifestyle = Math.min(10, Math.round(
+        (getNum('b6q1') * 4 + getNum('b6q2') * 2) / 12 * 10
+    ));
+
+    // Negócio: bloco 7 (max 8)
+    const business = Math.min(10, Math.round(
+        (getNum('b7q1') * 2 + getNum('b7q2') * 2) / 8 * 10
+    ));
+
+    // Total: média dos pilares escalada para 50
+    const total = Math.round((metabolic + hormonal + sleep + stress + lifestyle + business) / 60 * 50);
+
+    return { total, metabolic, hormonal, sleep, stress, lifestyle, business };
+}
+
 function finishQuiz() {
     hideScreen("quiz-screen");
     showScreen("processing-screen");
-    
-    state.scores = {
-        total: Math.floor(Math.random() * 15) + 20,
-        metabolic: Math.floor(Math.random() * 5) + 2,
-        hormonal: Math.floor(Math.random() * 5) + 4,
-        sleep: Math.floor(Math.random() * 4) + 1,
-        stress: Math.floor(Math.random() * 6) + 3,
-        lifestyle: Math.floor(Math.random() * 8) + 2,
-        business: Math.floor(Math.random() * 9) + 1
-    };
+
+    state.scores = calculateScores();
     
     localStorage.setItem("mle_session", JSON.stringify(state));
 

@@ -6,6 +6,7 @@
     <title>Sua Longevidade — Mapa de Risco</title>
     <!-- Iconify Global -->
     <script src="https://code.iconify.design/iconify-icon/1.0.7/iconify-icon.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <link rel="stylesheet" href="styles.css">
     <style>
         /* Base styles (Mobile First) */
@@ -111,25 +112,22 @@
             if(!data) { window.location.href = "index.html"; return; }
             
             const root = document.getElementById("results-content");
-            const score = data.scores.total || 34; // Random dummy generated
+            const score = data.scores.total || 0;
             const isMale = data.answers["sexo"] === "M";
-            
-            // Name formatter
+
             const firstName = data.user.name ? data.user.name.split(" ")[0] : "Executivo";
-            
-            // Generate arbitrary statuses for pillars based on UI rules
-            const getStatus = (seed) => {
-                const s = score + seed;
-                if(s % 3 === 0) return { class: 'high', label: 'Risco Alto', color: 'bg-red' };
-                if(s % 2 === 0) return { class: 'medium', label: 'Moderado', color: 'bg-yellow' };
-                return { class: 'low', label: 'Otimizado', color: 'bg-green' };
+
+            const getPillarStatus = (s) => {
+                if (s <= 3) return { class: 'high',   label: 'Risco Alto', color: 'bg-red' };
+                if (s <= 6) return { class: 'medium', label: 'Moderado',   color: 'bg-yellow' };
+                return            { class: 'low',    label: 'Otimizado',  color: 'bg-green' };
             };
 
-            const p1 = getStatus(1); // Brain / Cognitive
-            const p2 = getStatus(2); // Heart / Metabolic
-            const p3 = getStatus(0); // Lifestyle / Muscles
-            const p4 = getStatus(4); // Gut / Hormonal
-            const p5 = getStatus(5); // Sleep (eyes)
+            const p1 = getPillarStatus(data.scores.stress);     // Cognitivo
+            const p2 = getPillarStatus(data.scores.metabolic);  // Metabólico
+            const p3 = getPillarStatus(data.scores.lifestyle);  // Estilo de Vida
+            const p4 = getPillarStatus(data.scores.hormonal);   // Hormonal
+            const p5 = getPillarStatus(data.scores.sleep);      // Sono
 
             // Dynamic Copy based on precise data
             const exactAge = data.answers["idade"] || "sua idade atual";
@@ -228,7 +226,7 @@
                 <div class="cta-box reveal delay-400">
                     <div style="position: absolute; top:-50%; left:-20%; width:100%; height:200%; background: radial-gradient(circle, rgba(255,255,255,0.1), transparent 70%);"></div>
                     <div style="position: relative; z-index: 10;">
-                        <h2>Seu relatório detalhado foi enviado em PDF.</h2>
+                        <h2>Seu relatório foi gerado e baixado em PDF.</h2>
                         <p>No evento de 23 de Abril, vamos aprofundar esses dados.<br>Não terceirize o risco da sua companhia para a biologia do acaso. Intervenção agressiva já.</p>
                         <button class="btn" style="background: white; color: var(--accent-primary); font-weight: bold; width: 300px; padding: 18px 0; border-radius:100px;">
                             Agendar Blindagem Médica
@@ -242,7 +240,179 @@
             setTimeout(() => {
                 document.querySelectorAll('.reveal').forEach(el => el.classList.add('active'));
             }, 100);
+
+            // PDF Generation
+            setTimeout(() => generatePDF(data, score, p1, p2, p3, p4, p5), 1200);
         });
+
+        function generatePDF(data, score, p1, p2, p3, p4, p5) {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+            const W = 210, H = 297;
+            const margin = 20;
+            const col = '#0A0A0A';
+            const accent = '#4F46E5';
+            const muted = '#6B7280';
+
+            const riskColor = (cls) => cls === 'high' ? [220, 38, 38] : cls === 'medium' ? [217, 119, 6] : [22, 163, 74];
+            const riskLabel = (s) => s.label;
+
+            // Background
+            doc.setFillColor(248, 248, 252);
+            doc.rect(0, 0, W, H, 'F');
+
+            // Header bar
+            doc.setFillColor(15, 15, 35);
+            doc.rect(0, 0, W, 42, 'F');
+
+            // Title
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(18);
+            doc.setTextColor(255, 255, 255);
+            doc.text('CÓDIGO DA LONGEVIDADE', margin, 18);
+
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(10);
+            doc.setTextColor(180, 180, 200);
+            doc.text('Diagnóstico Executivo de Saúde e Performance', margin, 27);
+
+            const now = new Date();
+            doc.setFontSize(9);
+            doc.text(`Gerado em ${now.toLocaleDateString('pt-BR')}`, W - margin, 27, { align: 'right' });
+
+            // Name
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(13);
+            doc.setTextColor(255, 255, 255);
+            doc.text(data.user.name || 'Executivo', margin, 37);
+
+            // Score box
+            let y = 58;
+            doc.setFillColor(255, 255, 255);
+            doc.roundedRect(margin, y, W - margin * 2, 28, 4, 4, 'F');
+
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(32);
+            doc.setTextColor(...[79, 70, 229]);
+            doc.text(String(score), margin + 8, y + 20);
+
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(12);
+            doc.setTextColor(100, 100, 120);
+            doc.text('/ 50', margin + 8 + doc.getTextWidth(String(score)) + 2, y + 20);
+
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(11);
+            doc.setTextColor(15, 15, 35);
+            doc.text('Índice de Longevidade Executiva', margin + 60, y + 10);
+
+            const riskOverall = score <= 20 ? 'ALTO' : score <= 35 ? 'MODERADO' : 'BAIXO';
+            const riskRGB = score <= 20 ? [220, 38, 38] : score <= 35 ? [217, 119, 6] : [22, 163, 74];
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(10);
+            doc.setTextColor(...riskRGB);
+            doc.text(`Risco Geral: ${riskOverall}`, margin + 60, y + 20);
+
+            // Pillars section
+            y = 98;
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(12);
+            doc.setTextColor(15, 15, 35);
+            doc.text('ANÁLISE POR PILAR', margin, y);
+
+            doc.setDrawColor(220, 220, 235);
+            doc.setLineWidth(0.3);
+            doc.line(margin, y + 3, W - margin, y + 3);
+
+            const pillars = [
+                { label: 'Cognitivo / Estresse',   score: data.scores.stress,    status: p1 },
+                { label: 'Metabólico / Coração',    score: data.scores.metabolic, status: p2 },
+                { label: 'Hormonal / Energia',      score: data.scores.hormonal,  status: p4 },
+                { label: 'Qualidade do Sono',       score: data.scores.sleep,     status: p5 },
+                { label: 'Estilo de Vida / Físico', score: data.scores.lifestyle, status: p3 },
+                { label: 'Impacto no Negócio',      score: data.scores.business,  status: { class: getPillarClass(data.scores.business), label: getPillarLabel(data.scores.business) } },
+            ];
+
+            function getPillarClass(s) { return s <= 3 ? 'high' : s <= 6 ? 'medium' : 'low'; }
+            function getPillarLabel(s) { return s <= 3 ? 'Risco Alto' : s <= 6 ? 'Moderado' : 'Otimizado'; }
+
+            y += 10;
+            pillars.forEach((p, i) => {
+                const rowY = y + i * 22;
+                // Row background
+                doc.setFillColor(i % 2 === 0 ? 255 : 248, i % 2 === 0 ? 255 : 248, i % 2 === 0 ? 255 : 252);
+                doc.roundedRect(margin, rowY - 5, W - margin * 2, 18, 2, 2, 'F');
+
+                // Pillar name
+                doc.setFont('helvetica', 'normal');
+                doc.setFontSize(10);
+                doc.setTextColor(30, 30, 50);
+                doc.text(p.label, margin + 4, rowY + 5);
+
+                // Score bar background
+                const barX = margin + 80, barW = 60, barH = 5;
+                doc.setFillColor(225, 225, 235);
+                doc.roundedRect(barX, rowY + 1, barW, barH, 2, 2, 'F');
+
+                // Score bar fill
+                const fillW = Math.max(2, (p.score / 10) * barW);
+                const rc = riskColor(p.status.class);
+                doc.setFillColor(...rc);
+                doc.roundedRect(barX, rowY + 1, fillW, barH, 2, 2, 'F');
+
+                // Score number
+                doc.setFont('helvetica', 'bold');
+                doc.setFontSize(10);
+                doc.setTextColor(...rc);
+                doc.text(`${p.score}/10`, barX + barW + 4, rowY + 6);
+
+                // Status badge
+                doc.setFontSize(8);
+                doc.text(p.status.label || getPillarLabel(p.score), W - margin - 4, rowY + 6, { align: 'right' });
+            });
+
+            // Insights section
+            y += pillars.length * 22 + 10;
+            doc.setFillColor(240, 240, 255);
+            doc.roundedRect(margin, y, W - margin * 2, 38, 4, 4, 'F');
+
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(11);
+            doc.setTextColor(...[79, 70, 229]);
+            doc.text('Prognóstico', margin + 6, y + 10);
+
+            const age = data.answers['idade'] || '';
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(9);
+            doc.setTextColor(40, 40, 60);
+            const prog = `Aos ${age} anos, seus hábitos atuais impõem desgaste acelerado nos sistemas de recuperação e energia. Os pilares em risco precisam de intervenção imediata para evitar burnout funcional nos próximos anos.`;
+            const lines = doc.splitTextToSize(prog, W - margin * 2 - 12);
+            doc.text(lines, margin + 6, y + 19);
+
+            // CTA
+            y += 48;
+            doc.setFillColor(15, 15, 35);
+            doc.roundedRect(margin, y, W - margin * 2, 30, 4, 4, 'F');
+
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(12);
+            doc.setTextColor(255, 255, 255);
+            doc.text('Evento Exclusivo — 23 de Abril', margin + 6, y + 12);
+
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(9);
+            doc.setTextColor(180, 180, 200);
+            doc.text('Aprofundamento do diagnóstico com especialistas em longevidade executiva.', margin + 6, y + 21);
+
+            // Footer
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(8);
+            doc.setTextColor(160, 160, 180);
+            doc.text('Diagnóstico gerado pela Ferramenta Código da Longevidade — Confidencial', W / 2, H - 10, { align: 'center' });
+
+            const safeName = (data.user.name || 'diagnostico').replace(/\s+/g, '_').toLowerCase();
+            doc.save(`longevidade_${safeName}.pdf`);
+        }
     </script>
 </body>
 </html>
