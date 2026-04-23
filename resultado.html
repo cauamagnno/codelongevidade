@@ -277,6 +277,11 @@
                 doc.text('CÓDIGO DA LONGEVIDADE  |  Diagnóstico Executivo Confidencial', W / 2, H - 8, { align: 'center' });
                 doc.setTextColor(...GOLD);
                 doc.text(String(page), W - 14, H - 8, { align: 'right' });
+                // by Orchestra AI — clicável
+                doc.setFontSize(6);
+                doc.setTextColor(55, 48, 38);
+                doc.text('by Orchestra AI', 14, H - 8);
+                doc.link(14, H - 11, 24, 5, { url: 'https://orchestraai.com.br' });
             }
 
             function pageBg() {
