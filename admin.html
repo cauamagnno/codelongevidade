@@ -185,24 +185,18 @@
         <div id="view-settings" class="view-section" style="padding: 32px;">
             
             <div class="settings-card">
-                <h3>WhatsApp (API Evolution)</h3>
-                <p style="font-size: 14px; color: var(--text-secondary); margin-bottom: 24px;">
-                    Conecte o seu número de WhatsApp lendo o QR Code abaixo. Após conectado, o sistema enviará PDFs automaticamente e você poderá chamar os clientes direto pelo CRM.
+                <h3>WhatsApp (API Oficial Meta)</h3>
+                <p style="font-size: 14px; color: var(--text-secondary); margin-bottom: 16px;">
+                    Integração ativa com a API oficial do WhatsApp Business. O botão <b>Enviar Confirmação</b> dispara o template <code>confirmacao</code> com o Guia do Participante em PDF.
                 </p>
-                <div style="display: flex; flex-direction: column; gap: 12px; margin-bottom: 16px;">
-                    <input type="text" id="evo-url" class="input-field" placeholder="URL da Evolution (ex: https://api.seusite.com)" value="https://stenio-evolution.vfgbmr.easypanel.host">
-                    <input type="password" id="evo-key" class="input-field" placeholder="Global API Key" value="Steni0-o312">
-                    <input type="text" id="evo-instance" class="input-field" placeholder="Nome da Instância (ex: crm_oficial)" value="crm_longevidade">
+                <div style="background: var(--bg-primary); border: 1px solid var(--border); border-radius: 8px; padding: 16px; font-size: 13px; display: flex; flex-direction: column; gap: 8px;">
+                    <div><b>Phone ID:</b> 898637856663488</div>
+                    <div><b>WABA ID:</b> 870199639016828</div>
+                    <div><b>Template:</b> <code>confirmacao</code> (pt_BR)</div>
+                    <div><b>PDF Guia:</b> guiadoparticipante.pdf</div>
                 </div>
-                <div style="display: flex; gap: 12px; align-items: center;">
-                    <button class="btn btn-gold" onclick="window.connectEvolution()">
-                        <iconify-icon icon="solar:qr-code-bold-duotone" style="font-size: 20px;"></iconify-icon> Gerar QR Code
-                    </button>
-                    <div id="evo-status" style="font-size: 12px; font-weight: 600;"></div>
-                </div>
-                <div id="evo-qrcode-container" style="margin-top: 24px; text-align: center; display: none;">
-                    <img id="evo-qrcode-img" src="" alt="QR Code WhatsApp" style="max-width: 250px; border-radius: 12px; border: 1px solid var(--border);">
-                    <p style="font-size: 12px; color: var(--text-secondary); margin-top: 8px;">Abra o WhatsApp no celular e leia o código acima para conectar.</p>
+                <div style="margin-top: 12px; padding: 10px 14px; background: rgba(39,174,96,0.1); border: 1px solid rgba(39,174,96,0.3); border-radius: 8px; font-size: 13px; color: #27AE60; font-weight: 600;">
+                    ✓ API Conectada e Operacional
                 </div>
             </div>
 
@@ -532,7 +526,7 @@
                         <b>WhatsApp:</b> ${lead.whatsapp || '(00) 00000-0000'}
                         <div style="display: flex; gap: 8px; margin-top: 8px;">
                             <a href="https://wa.me/55${(lead.whatsapp || '').replace(/\D/g, '')}" target="_blank" class="btn btn-outline" style="height: 30px; font-size: 12px;"><iconify-icon icon="solar:chat-round-line-bold-duotone"></iconify-icon> Abrir Web</a>
-                            <button class="btn btn-gold" style="height: 30px; font-size: 12px;" onclick="window.sendEvoMessage('${(lead.whatsapp || '').replace(/\D/g, '')}')"><iconify-icon icon="solar:plain-bold-duotone"></iconify-icon> Disparar API</button>
+                            <button class="btn btn-gold" style="height: 30px; font-size: 12px;" onclick="window.sendMetaMessage('${(lead.whatsapp || '').replace(/\D/g, '')}')"><iconify-icon icon="solar:plain-bold-duotone"></iconify-icon> Enviar Confirmação</button>
                         </div>
                         <div id="evo-send-status-${lead.id}" style="font-size: 11px; margin-top: 4px; color: var(--accent-primary);"></div>
                     </div>
@@ -647,139 +641,83 @@ Você tem 15 minutos amanhã para abrir o mapa e traçar um plano de ação?</di
             document.body.removeChild(link);
         };
 
-        // --- Evolution API Connection ---
-        window.connectEvolution = async function() {
-            const url = document.getElementById('evo-url').value.trim().replace(/\/$/, "");
-            const key = document.getElementById('evo-key').value.trim();
-            const instance = document.getElementById('evo-instance').value.trim();
-            const statusDiv = document.getElementById("evo-status");
-            const qrContainer = document.getElementById("evo-qrcode-container");
-            const qrImg = document.getElementById("evo-qrcode-img");
-            
-            if(!url || !key || !instance) {
-                statusDiv.innerText = "Preencha todos os campos!";
-                statusDiv.style.color = "red";
-                return;
-            }
-            
-            // Save config
-            window.evoConfig = { url, key, instance };
-            localStorage.setItem("crm_evo_config", JSON.stringify(window.evoConfig));
-            
-            statusDiv.innerText = "Gerando QR Code...";
-            statusDiv.style.color = "var(--text-secondary)";
-            qrContainer.style.display = "none";
-            
-            try {
-                // Tenta criar a instância (se não existir) ou conectar (se já existir e estiver offline)
-                const response = await fetch(`${url}/instance/create`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'apikey': key },
-                    body: JSON.stringify({ instanceName: instance, qrcode: true })
-                });
-                
-                const data = await response.json();
-                
-                if(data.qrcode && data.qrcode.base64) {
-                    qrImg.src = data.qrcode.base64;
-                    qrContainer.style.display = "block";
-                    statusDiv.innerText = "QR Code pronto! Leia com o WhatsApp.";
-                    statusDiv.style.color = "var(--accent-primary)";
-                } else if(data.instance && data.instance.state === "open") {
-                    statusDiv.innerText = "Instância já está CONECTADA!";
-                    statusDiv.style.color = "var(--accent-primary)";
-                } else {
-                    // Fallback para conectar se já foi criada
-                    const fetchConnect = await fetch(`${url}/instance/connect/${instance}`, {
-                        headers: { 'apikey': key }
-                    });
-                    const dataConnect = await fetchConnect.json();
-                    if(dataConnect.base64) {
-                        qrImg.src = dataConnect.base64;
-                        qrContainer.style.display = "block";
-                        statusDiv.innerText = "QR Code pronto! Leia com o WhatsApp.";
-                        statusDiv.style.color = "var(--accent-primary)";
-                    } else {
-                        statusDiv.innerText = "Erro ao obter QR. Verifique sua API.";
-                        statusDiv.style.color = "red";
-                    }
-                }
-            } catch(e) {
-                console.error(e);
-                statusDiv.innerText = "Erro de conexão: " + e.message;
-                statusDiv.style.color = "red";
-            }
-        };
-
-        // --- Evolution API: Disparar do CRM ---
-        window.sendEvoMessage = async function(phone) {
+        // --- Meta WhatsApp Business API ---
+        window.sendMetaMessage = async function(phone) {
             const lead = window.allLeads.find(l => l.id === window.currentLeadId);
             const statusDiv = document.getElementById(`evo-send-status-${lead.id}`);
-            
-            if(!window.evoConfig.url || !window.evoConfig.key || !window.evoConfig.instance) {
-                statusDiv.innerText = "Configure a API Evolution primeiro.";
-                return;
-            }
-            
-            statusDiv.innerText = "Enviando...";
-            
-            // Text to send
-            const msgBody = `Olá ${lead.name.split(" ")[0]}! Aqui é do time do Código da Longevidade. Identificamos pontos cruciais no seu diagnóstico de Performance Empresarial.`;
+
+            const PHONE_ID = '898637856663488';
+            const TOKEN = 'EAALfHzPBOzgBQDZCDOv4851nz5XxULTFi6fZAfgY3q8uHgx87jWmgZAs1HjrGv602alwAzoqXytQ4JArFZBcWiLblg5rqxtB4ZCKf093ZCDymBEMt6WaOw7xMnu57YXGL8WVzWAVmdjIhdgC4gy0sI3Uz9NlED942ZCayau3gFdTJ1vYCwkyujkYKDPUvlRHZBHQawZDZD';
+            const PDF_URL = 'https://cmqpjrulpehspogcwegd.supabase.co/storage/v1/object/public/codelongevidade/guiadoparticipante.pdf';
+
+            statusDiv.innerText = 'Enviando...';
+            statusDiv.style.color = 'var(--text-secondary)';
+
+            const formattedPhone = '55' + phone.replace(/\D/g, '');
+            const firstName = lead.name.split(' ')[0];
 
             try {
-                // Se tiver PDF, enviamos o PDF com o texto como legenda
-                if(lead.pdf_url) {
-                    const resMedia = await fetch(`${window.evoConfig.url}/message/sendMedia/${window.evoConfig.instance}`, {
-                        method: "POST",
-                        headers: { 'Content-Type': 'application/json', 'apikey': window.evoConfig.key },
-                        body: JSON.stringify({
-                            number: "55" + phone,
-                            options: { delay: 1200 },
-                            mediaMessage: {
-                                mediatype: "document",
-                                fileName: `Mapa_Longevidade_${lead.name.split(" ")[0]}.pdf`,
-                                caption: msgBody + "\n\nSegue o seu Dossiê Exclusivo em anexo:",
-                                media: lead.pdf_url
-                            }
-                        })
-                    });
-                    
-                    if(resMedia.ok) {
-                        statusDiv.innerText = "PDF enviado com sucesso!";
-                        statusDiv.style.color = "var(--accent-gold)";
-                    } else {
-                        const err = await resMedia.json();
-                        statusDiv.innerText = "Erro: " + (err.message || resMedia.statusText);
-                        statusDiv.style.color = "red";
-                    }
+                const res = await fetch(`https://graph.facebook.com/v22.0/${PHONE_ID}/messages`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${TOKEN}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        messaging_product: 'whatsapp',
+                        recipient_type: 'individual',
+                        to: formattedPhone,
+                        type: 'template',
+                        template: {
+                            name: 'confirmacao',
+                            language: { code: 'pt_BR' },
+                            components: [
+                                {
+                                    type: 'header',
+                                    parameters: [
+                                        {
+                                            type: 'document',
+                                            document: {
+                                                link: PDF_URL,
+                                                filename: 'Guia do Participante - Código da Longevidade.pdf'
+                                            }
+                                        }
+                                    ]
+                                },
+                                {
+                                    type: 'body',
+                                    parameters: [
+                                        { type: 'text', text: firstName }
+                                    ]
+                                }
+                            ]
+                        }
+                    })
+                });
+
+                const result = await res.json();
+
+                if (res.ok && result.messages) {
+                    statusDiv.innerText = '✓ Confirmação enviada!';
+                    statusDiv.style.color = 'var(--accent-gold)';
+                    await dbClient.from('leads')
+                        .update({ whatsapp_sent: true, admin_status: 'contacted' })
+                        .eq('id', lead.id);
+                    lead.whatsapp_sent = true;
+                    lead.admin_status = 'contacted';
+                    window.renderKanban(window.allLeads);
                 } else {
-                    // Sem PDF, envia só texto
-                    const resText = await fetch(`${window.evoConfig.url}/message/sendText/${window.evoConfig.instance}`, {
-                        method: "POST",
-                        headers: { 'Content-Type': 'application/json', 'apikey': window.evoConfig.key },
-                        body: JSON.stringify({
-                            number: "55" + phone,
-                            options: { delay: 1200 },
-                            textMessage: { text: msgBody }
-                        })
-                    });
-                    
-                    if(resText.ok) {
-                        statusDiv.innerText = "Mensagem enviada com sucesso!";
-                        statusDiv.style.color = "var(--accent-gold)";
-                    } else {
-                        const err = await resText.json();
-                        statusDiv.innerText = "Erro: " + (err.message || resText.statusText);
-                        statusDiv.style.color = "red";
-                    }
+                    const errMsg = result.error?.message || JSON.stringify(result);
+                    statusDiv.innerText = 'Erro: ' + errMsg;
+                    statusDiv.style.color = 'red';
+                    console.error('Meta API error:', result);
                 }
             } catch(e) {
-                console.error(e);
-                statusDiv.innerText = "Falha de rede.";
-                statusDiv.style.color = "red";
+                statusDiv.innerText = 'Falha de rede: ' + e.message;
+                statusDiv.style.color = 'red';
             }
-            
-            setTimeout(() => { if(statusDiv) statusDiv.innerText = ""; }, 3000);
+
+            setTimeout(() => { if(statusDiv) statusDiv.innerText = ''; }, 4000);
         };
 
         // Bootstrap explicitly without DOMContentLoaded
