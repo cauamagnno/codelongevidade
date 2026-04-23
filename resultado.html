@@ -433,11 +433,67 @@
 
                     if (!upErr) {
                         const { data: urlData } = db.storage.from('pdfs').getPublicUrl(storagePath);
-                        await db.from('leads').update({ pdf_url: urlData.publicUrl }).eq('id', data.lead_id);
+                        const pdfPublicUrl = urlData.publicUrl;
+                        await db.from('leads').update({ pdf_url: pdfPublicUrl }).eq('id', data.lead_id);
+
+                        // Dispara WhatsApp após 60 segundos
+                        setTimeout(() => sendDiagnosticoWhatsApp(
+                            data.user.whatsapp,
+                            data.user.name,
+                            pdfPublicUrl
+                        ), 60000);
                     }
                 } catch (e) {
                     console.error('PDF upload error:', e);
                 }
+            }
+        }
+
+        async function sendDiagnosticoWhatsApp(whatsapp, name, pdfUrl) {
+            const PHONE_ID = '898637856663488';
+            const TOKEN   = 'EAALfHzPBOzgBQDZCDOv4851nz5XxULTFi6fZAfgY3q8uHgx87jWmgZAs1HjrGv602alwAzoqXytQ4JArFZBcWiLblg5rqxtB4ZCKf093ZCDymBEMt6WaOw7xMnu57YXGL8WVzWAVmdjIhdgC4gy0sI3Uz9NlED942ZCayau3gFdTJ1vYCwkyujkYKDPUvlRHZBHQawZDZD';
+
+            const phone     = '55' + whatsapp.replace(/\D/g, '');
+            const firstName = name ? name.split(' ')[0] : 'Executivo';
+
+            try {
+                await fetch(`https://graph.facebook.com/v22.0/${PHONE_ID}/messages`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${TOKEN}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        messaging_product: 'whatsapp',
+                        recipient_type: 'individual',
+                        to: phone,
+                        type: 'template',
+                        template: {
+                            name: 'diagnostico',
+                            language: { code: 'pt_BR' },
+                            components: [
+                                {
+                                    type: 'header',
+                                    parameters: [{
+                                        type: 'document',
+                                        document: {
+                                            link: pdfUrl,
+                                            filename: 'Diagnóstico de Longevidade e Performance.pdf'
+                                        }
+                                    }]
+                                },
+                                {
+                                    type: 'body',
+                                    parameters: [
+                                        { type: 'text', text: firstName }
+                                    ]
+                                }
+                            ]
+                        }
+                    })
+                });
+            } catch(e) {
+                console.error('WhatsApp send error:', e);
             }
         }
     </script>
