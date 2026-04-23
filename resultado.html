@@ -7,6 +7,7 @@
     <!-- Iconify Global -->
     <script src="https://code.iconify.design/iconify-icon/1.0.7/iconify-icon.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <link rel="stylesheet" href="styles.css">
     <style>
         /* Base styles (Mobile First) */
@@ -245,7 +246,7 @@
             setTimeout(() => generatePDF(data, score, p1, p2, p3, p4, p5), 1200);
         });
 
-        function generatePDF(data, score, p1, p2, p3, p4, p5) {
+        async function generatePDF(data, score, p1, p2, p3, p4, p5) {
             const { jsPDF } = window.jspdf;
             const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
             const W = 210, H = 297;
@@ -411,7 +412,33 @@
             doc.text('Diagnóstico gerado pela Ferramenta Código da Longevidade — Confidencial', W / 2, H - 10, { align: 'center' });
 
             const safeName = (data.user.name || 'diagnostico').replace(/\s+/g, '_').toLowerCase();
-            doc.save(`longevidade_${safeName}.pdf`);
+            const fileName = `longevidade_${safeName}.pdf`;
+
+            // Download local
+            doc.save(fileName);
+
+            // Upload para Supabase Storage e salva link no lead
+            if (data.lead_id) {
+                try {
+                    const SUPABASE_URL = "https://xxrgxklwahmanxlgioxk.supabase.co";
+                    const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh4cmd4a2x3YWhtYW54bGdpb3hrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYzMTE2OTEsImV4cCI6MjA5MTg4NzY5MX0.unV6eUzgQjrrP2oZRllSiSGb7wsxoSJVdG94G6iZUFw";
+                    const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+                    const pdfBlob = doc.output('blob');
+                    const storagePath = `${data.lead_id}_${Date.now()}.pdf`;
+
+                    const { error: upErr } = await db.storage
+                        .from('pdfs')
+                        .upload(storagePath, pdfBlob, { contentType: 'application/pdf' });
+
+                    if (!upErr) {
+                        const { data: urlData } = db.storage.from('pdfs').getPublicUrl(storagePath);
+                        await db.from('leads').update({ pdf_url: urlData.publicUrl }).eq('id', data.lead_id);
+                    }
+                } catch (e) {
+                    console.error('PDF upload error:', e);
+                }
+            }
         }
     </script>
 </body>
