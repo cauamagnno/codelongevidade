@@ -255,13 +255,13 @@
             const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
             const W = 210, H = 297;
 
-            // Paleta
-            const DARK    = [8, 10, 18];
-            const DARK2   = [16, 20, 34];
-            const CARD    = [20, 24, 40];
+            // Paleta warm-dark (estilo LP do evento)
+            const DARK    = [10, 9, 8];
+            const DARK2   = [18, 16, 12];
+            const CARD    = [24, 20, 15];
             const GOLD    = [197, 160, 89];
-            const WHITE   = [255, 255, 255];
-            const MUTED   = [130, 135, 160];
+            const WHITE   = [240, 237, 232];
+            const MUTED   = [110, 100, 85];
             const RED     = [232, 64, 64];
             const YELLOW  = [230, 160, 30];
             const GREEN   = [39, 174, 96];
@@ -273,7 +273,7 @@
             function footer(page) {
                 doc.setFont('helvetica', 'normal');
                 doc.setFontSize(7);
-                doc.setTextColor(50, 55, 75);
+                doc.setTextColor(70, 60, 48);
                 doc.text('CÓDIGO DA LONGEVIDADE  |  Diagnóstico Executivo Confidencial', W / 2, H - 8, { align: 'center' });
                 doc.setTextColor(...GOLD);
                 doc.text(String(page), W - 14, H - 8, { align: 'right' });
@@ -289,7 +289,122 @@
             }
 
             // ════════════════════════════════════════
-            // PÁGINA 1 — CAPA
+            // CAPA — ESTILO LP DO EVENTO
+            // ════════════════════════════════════════
+            doc.setFillColor(...DARK);
+            doc.rect(0, 0, W, H, 'F');
+            doc.setFillColor(...GOLD);
+            doc.rect(0, 0, W, 1.5, 'F');
+            doc.setFillColor(...GOLD);
+            doc.rect(0, H - 1.5, W, 1.5, 'F');
+
+            // Badge: EVENTO EXCLUSIVO
+            const bW = 78, bH = 8, bX = (W - bW) / 2, bY = 24;
+            doc.setDrawColor(...GOLD);
+            doc.setLineWidth(0.4);
+            doc.roundedRect(bX, bY, bW, bH, 2, 2, 'S');
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(6.5);
+            doc.setTextColor(...GOLD);
+            doc.text('EVENTO EXCLUSIVO  —  VAGAS LIMITADAS', W / 2, bY + 5.3, { align: 'center' });
+
+            // Linha de logos
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(7);
+            doc.setTextColor(...MUTED);
+            doc.text('MEDKINLIFE  ·  MOOVE HUB  ·  CATALISA.EDU APRESENTAM', W / 2, 44, { align: 'center' });
+
+            // Linha decorativa
+            doc.setDrawColor(...GOLD);
+            doc.setLineWidth(0.3);
+            doc.line((W - 50) / 2, 50, (W + 50) / 2, 50);
+
+            // Título principal
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(52);
+            doc.setTextColor(...WHITE);
+            doc.text('Código', W / 2, 90, { align: 'center' });
+
+            doc.setFont('helvetica', 'bolditalic');
+            doc.setFontSize(48);
+            doc.setTextColor(...GOLD);
+            doc.text('da Longevidade', W / 2, 112, { align: 'center' });
+
+            // Linha decorativa
+            doc.setDrawColor(...GOLD);
+            doc.setLineWidth(0.3);
+            doc.line((W - 50) / 2, 120, (W + 50) / 2, 120);
+
+            // PRIVATE EDITION
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(8);
+            doc.setTextColor(...MUTED);
+            doc.text('P R I V A T E   E D I T I O N', W / 2, 130, { align: 'center' });
+
+            // Separador
+            doc.setDrawColor(38, 33, 26);
+            doc.setLineWidth(0.3);
+            doc.line(16, 148, W - 16, 148);
+
+            // Label diagnóstico personalizado
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(8);
+            doc.setTextColor(...GOLD);
+            doc.text('DIAGNÓSTICO PERSONALIZADO PARA', W / 2, 164, { align: 'center' });
+
+            // Nome do lead
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(22);
+            doc.setTextColor(...WHITE);
+            doc.text((data.user.name || 'Executivo').toUpperCase(), W / 2, 178, { align: 'center' });
+
+            // Separador
+            doc.setDrawColor(38, 33, 26);
+            doc.setLineWidth(0.3);
+            doc.line(16, 190, W - 16, 190);
+
+            // Data
+            doc.setFont('helvetica', 'bolditalic');
+            doc.setFontSize(22);
+            doc.setTextColor(...WHITE);
+            doc.text('23 de Abril de 2026', W / 2, 218, { align: 'center' });
+
+            // Local
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(8);
+            doc.setTextColor(...MUTED);
+            doc.text('CASA OSTEN  ·  SÃO PAULO  ·  SP', W / 2, 228, { align: 'center' });
+
+            // Badge lançamento
+            const lW = 152, lH = 9, lX = (W - lW) / 2, lY = 248;
+            doc.setFillColor(22, 19, 14);
+            doc.roundedRect(lX, lY, lW, lH, 2, 2, 'F');
+            doc.setDrawColor(38, 33, 26);
+            doc.setLineWidth(0.3);
+            doc.roundedRect(lX, lY, lW, lH, 2, 2, 'S');
+            doc.setFillColor(...GOLD);
+            doc.circle(lX + 8, lY + 4.5, 1.5, 'F');
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(7.5);
+            doc.setTextColor(...WHITE);
+            doc.text('Lançamento: ', lX + 14, lY + 5.8);
+            doc.setTextColor(...GOLD);
+            doc.text('Do Biológico ao Bilionário', lX + 14 + 25.5, lY + 5.8);
+            doc.setTextColor(...MUTED);
+            doc.text('— Dr. Rogério Welbert', lX + 14 + 25.5 + 46, lY + 5.8);
+
+            // Rodapé gold
+            doc.setFillColor(...GOLD);
+            doc.rect(0, H - 18, W, 18, 'F');
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(8);
+            doc.setTextColor(10, 9, 8);
+            doc.text('orchestraai.com.br/codigolongevidade', W / 2, H - 6, { align: 'center' });
+
+            doc.addPage();
+
+            // ════════════════════════════════════════
+            // PÁGINA 1 — CAPA DO DIAGNÓSTICO
             // ════════════════════════════════════════
             pageBg();
 
@@ -398,7 +513,7 @@
             doc.setFontSize(7);
             doc.setTextColor(...GOLD);
             doc.text('VISÃO GERAL DOS PILARES', cx, 228, { align: 'center' });
-            doc.setDrawColor(35, 40, 60);
+            doc.setDrawColor(38, 33, 26);
             doc.setLineWidth(0.3);
             doc.line(16, 231, W - 14, 231);
 
@@ -410,7 +525,7 @@
                 doc.setFontSize(6.5);
                 doc.setTextColor(...MUTED);
                 doc.text(p.name.toUpperCase(), x, y);
-                doc.setFillColor(30, 36, 55);
+                doc.setFillColor(30, 26, 20);
                 doc.roundedRect(x, y + 2, colW - 6, 4.5, 1, 1, 'F');
                 const fw = Math.max(2, (p.s / 10) * (colW - 6));
                 doc.setFillColor(...rc(p.cls));
@@ -577,7 +692,7 @@
             doc.setFontSize(9);
             doc.setTextColor(...GOLD);
             doc.text('TOP 3 — INTERVENÇÕES PRIORITÁRIAS', 16, 52);
-            doc.setDrawColor(35, 42, 65);
+            doc.setDrawColor(38, 33, 26);
             doc.setLineWidth(0.3);
             doc.line(16, 55, W - 14, 55);
 
@@ -656,7 +771,7 @@
             doc.text('CONFIRMAR PRESENÇA NO EVENTO', W / 2, ctaY + 47, { align: 'center' });
 
             // Assinatura
-            doc.setDrawColor(35, 42, 65);
+            doc.setDrawColor(38, 33, 26);
             doc.setLineWidth(0.3);
             doc.line(16, 276, 70, 276);
             doc.setFont('helvetica', 'bold');
